@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: rafflechain-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: rafflechain
+      POSTGRES_PASSWORD: rafflechain
+      POSTGRES_DB: rafflechain
+    ports:
+      - "5432:5432"
+    volumes:
+      - rafflechain_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  rafflechain_postgres_data:
