@@ -2,9 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import EditRaffleMetadataForm from "@/components/EditRaffleMetadataForm";
-import OnChainRaffleInfoPlaceholder from "@/components/OnChainRaffleInfoPlaceholder";
-import BuyTicketsPlaceholder from "@/components/BuyTicketsPlaceholder";
-import OrganizerActionsPlaceholder from "@/components/OrganizerActionsPlaceholder";
+import OnChainRaffleInfo from "@/components/OnChainRaffleInfo";
+import BuyTicketsForm from "@/components/BuyTicketsForm";
+import OrganizerActions from "@/components/OrganizerActions";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +30,6 @@ export default async function RaffleDetailPage({ params }: Props) {
         </Link>
 
         <div className="bg-white rounded-xl border border-gray-200 mt-4 overflow-hidden">
-          {/* Image */}
           {raffle.imageUrl && (
             <img
               src={raffle.imageUrl}
@@ -40,7 +39,6 @@ export default async function RaffleDetailPage({ params }: Props) {
           )}
 
           <div className="p-8">
-            {/* ID badge */}
             <span className="inline-block text-xs font-mono text-gray-400 bg-gray-50 border border-gray-100 px-2 py-0.5 rounded mb-3">
               ID on-chain #{raffle.raffleIdOnChain}
             </span>
@@ -64,19 +62,9 @@ export default async function RaffleDetailPage({ params }: Props) {
               {raffle.createdAt.toLocaleDateString("es-AR", { dateStyle: "long" })}
             </p>
 
-            {/* TODO(blockchain): Reemplazar estos placeholders cuando se integre el contrato.
-                Leer datos on-chain en paralelo con la metadata:
-                  const onChainData = await raffleChainContract.getRaffle(raffleIdOnChain)
-                  const ticketsSold = await raffleChainContract.getTicketsSold(raffleIdOnChain)
-                Mostrar: ticketPrice, maxTickets, ticketsSold, amountCollected, status, winner. */}
-            <OnChainRaffleInfoPlaceholder raffleIdOnChain={raffle.raffleIdOnChain} />
-
-            {/* TODO(blockchain): Habilitar solo cuando status === ACTIVE y la rifa no terminó. */}
-            <BuyTicketsPlaceholder raffleIdOnChain={raffle.raffleIdOnChain} />
-
-            {/* TODO(blockchain): Mostrar solo al organizador (wallet === raffle.organizer)
-                o al ganador (wallet === raffle.winner) según la acción. */}
-            <OrganizerActionsPlaceholder raffleIdOnChain={raffle.raffleIdOnChain} />
+            <OnChainRaffleInfo raffleIdOnChain={raffle.raffleIdOnChain} />
+            <BuyTicketsForm raffleIdOnChain={raffle.raffleIdOnChain} />
+            <OrganizerActions raffleIdOnChain={raffle.raffleIdOnChain} />
 
             <EditRaffleMetadataForm raffle={raffle} />
           </div>

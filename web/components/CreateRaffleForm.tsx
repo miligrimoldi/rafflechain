@@ -2,17 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ethers } from "ethers";
+import { useWallet } from "@/context/WalletContext";
+import { getWriteContract } from "@/lib/contract";
 import FormField from "./FormField";
 
-// TODO(blockchain): Agregar estos campos al form cuando se integre el contrato.
-// Se pasarán como argumentos a createRaffle(ticketPrice, maxTickets, endTime):
-//   ticketPrice: string;   → en wei  (ej. parseEther("0.01"))
-//   maxTickets:  string;   → cantidad máxima de tickets
-//   endTime:     string;   → fecha/hora de cierre → convertir a timestamp Unix
 type FormState = {
-  // TEMPORAL: desaparecerá cuando se integre el contrato.
-  // El ID lo emitirá el evento RaffleCreated al confirmar la tx de createRaffle().
-  raffleIdOnChain: string;
+  ticketPrice: string;
+  maxTickets: string;
+  endTime: string;
   title: string;
   description: string;
   imageUrl: string;
@@ -22,7 +20,9 @@ type FormState = {
 };
 
 const EMPTY: FormState = {
-  raffleIdOnChain: "",
+  ticketPrice: "",
+  maxTickets: "",
+  endTime: "",
   title: "",
   description: "",
   imageUrl: "",
@@ -33,8 +33,10 @@ const EMPTY: FormState = {
 
 export default function CreateRaffleForm() {
   const router = useRouter();
+  const { signer, isConnected, isWrongNetwork, connect } = useWallet();
   const [form, setForm] = useState<FormState>(EMPTY);
   const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
@@ -43,43 +45,79 @@ export default function CreateRaffleForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+    setStatus(null);
 
-    const id = parseInt(form.raffleIdOnChain, 10);
-    if (isNaN(id)) {
-      setError("El ID on-chain debe ser un número entero.");
-      setLoading(false);
+    if (!isConnected) {
+      await connect();
+      return;
+    }
+    if (isWrongNetwork) {
+      setError("Cambiá a la red Sepolia antes de continuar.");
+      return;
+    }
+    if (!signer) {
+      setError("Wallet no conectada.");
       return;
     }
 
-    // TODO(blockchain): Reemplazar el bloque try de abajo por este flujo cuando
-    // se integre MetaMask + Wagmi/Viem:
-    //
-    //   1. Llamar al contrato con los datos on-chain:
-    //      const tx = await raffleChainContract.createRaffle(
-    //        parseEther(form.ticketPrice),                              // wei
-    //        BigInt(form.maxTickets),
-    //        BigInt(Math.floor(new Date(form.endTime).getTime() / 1000)) // Unix ts
-    //      );
-    //
-    //   2. Esperar confirmación (MetaMask firma → transacción minada):
-    //      const receipt = await tx.wait();
-    //
-    //   3. Leer raffleId del evento RaffleCreated emitido por el contrato:
-    //      const log = receipt.logs.find(l => l.fragment?.name === "RaffleCreated");
-    //      const raffleIdOnChain = Number(log?.args?.raffleId);
-    //
-    //   4. Solo después de confirmar el ID, guardar la metadata off-chain:
-    //      POST /api/raffles { raffleIdOnChain, title, description, ... }
-    //
-    // El campo raffleIdOnChain del form (temporal) ya no será necesario.
+    const ticketPriceWei = (() => {
+      try { return ethers.parseEther(form.ticketPrice); } catch { return null; }
+    })();
+    if (ticketPriceWei === null || ticketPriceWei <= 0n) {
+      setError("Precio de ticket inválido. Ingresá un valor en ETH, ej. 0.01");
+      return;
+    }
+
+    const maxTickets = parseInt(form.maxTickets, 10);
+    if (isNaN(maxTickets) || maxTickets < 1) {
+      setError("Cantidad máxima de tickets inválida.");
+      return;
+    }
+
+    const endTimestamp = Math.floor(new Date(form.endTime).getTime() / 1000);
+    if (isNaN(endTimestamp) || endTimestamp <= Math.floor(Date.now() / 1000)) {
+      setError("La fecha de cierre debe ser en el futuro.");
+      return;
+    }
+
+    setLoading(true);
     try {
+      // 1. Llamar al contrato
+      setStatus("Confirmá la transacción en MetaMask…");
+      const contract = getWriteContract(signer);
+      const tx = await contract.createRaffle(
+        ticketPriceWei,
+        BigInt(maxTickets),
+        BigInt(endTimestamp)
+      );
+
+      // 2. Esperar confirmación
+      setStatus("Esperando confirmación en la blockchain…");
+      const receipt = await tx.wait();
+
+      // 3. Extraer raffleId del evento RaffleCreated
+      let raffleIdOnChain: number | null = null;
+      for (const log of receipt.logs) {
+        if (
+          log instanceof ethers.EventLog &&
+          log.fragment.name === "RaffleCreated"
+        ) {
+          raffleIdOnChain = Number(log.args[0]);
+          break;
+        }
+      }
+      if (raffleIdOnChain === null) {
+        throw new Error("No se encontró el evento RaffleCreated en el recibo.");
+      }
+
+      // 4. Guardar metadata off-chain
+      setStatus("Guardando metadata…");
       const res = await fetch("/api/raffles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          raffleIdOnChain: id,
+          raffleIdOnChain,
           title: form.title,
           description: form.description,
           organizerName: form.organizerName,
@@ -90,15 +128,16 @@ export default function CreateRaffleForm() {
       });
 
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Error al guardar metadata.");
 
-      if (!res.ok) {
-        setError(data.error ?? "Error al crear la rifa.");
-        return;
-      }
-
-      router.push(`/raffles/${data.raffleIdOnChain}`);
-    } catch {
-      setError("Error de red. Intentá de nuevo.");
+      router.push(`/raffles/${raffleIdOnChain}`);
+    } catch (e: unknown) {
+      const msg =
+        (e as { reason?: string; message?: string }).reason ??
+        (e as { message?: string }).message ??
+        "Error desconocido";
+      setError(msg);
+      setStatus(null);
     } finally {
       setLoading(false);
     }
@@ -111,80 +150,108 @@ export default function CreateRaffleForm() {
           {error}
         </div>
       )}
+      {status && !error && (
+        <div className="bg-indigo-50 border border-indigo-200 text-indigo-700 px-4 py-3 rounded-lg text-sm">
+          {status}
+        </div>
+      )}
 
-      {/* TEMPORAL: Este campo desaparecerá cuando se integre el contrato.
-          En el flujo real el raffleId lo emite el evento RaffleCreated
-          al confirmar la tx de createRaffle(). */}
-      <FormField
-        label="ID on-chain (temporal)"
-        name="raffleIdOnChain"
-        type="number"
-        required
-        placeholder="0"
-        value={form.raffleIdOnChain}
-        onChange={handleChange}
-      />
-      <p className="-mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">
-        ⚠️ Campo temporal. En la versión integrada, este ID lo generará automáticamente
-        el contrato al ejecutar <code className="font-mono">createRaffle()</code>.
-      </p>
+      <div className="border-b border-gray-100 pb-5 space-y-5">
+        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+          Datos on-chain
+        </p>
+        <FormField
+          label="Precio del ticket (ETH)"
+          name="ticketPrice"
+          required
+          placeholder="ej. 0.01"
+          value={form.ticketPrice}
+          onChange={handleChange}
+        />
+        <FormField
+          label="Máximo de tickets"
+          name="maxTickets"
+          type="number"
+          required
+          placeholder="ej. 100"
+          value={form.maxTickets}
+          onChange={handleChange}
+        />
+        <FormField
+          label="Fecha y hora de cierre"
+          name="endTime"
+          type="datetime-local"
+          required
+          value={form.endTime}
+          onChange={handleChange}
+        />
+      </div>
 
-      <FormField
-        label="Título"
-        name="title"
-        required
-        placeholder="ej. Rifa de la bici"
-        value={form.title}
-        onChange={handleChange}
-      />
-      <FormField
-        label="Descripción"
-        name="description"
-        required
-        textarea
-        placeholder="Describí el premio y las condiciones generales."
-        value={form.description}
-        onChange={handleChange}
-      />
-      <FormField
-        label="Organizador"
-        name="organizerName"
-        required
-        placeholder="Nombre del organizador"
-        value={form.organizerName}
-        onChange={handleChange}
-      />
-      <FormField
-        label="Imagen (URL, opcional)"
-        name="imageUrl"
-        type="url"
-        placeholder="https://..."
-        value={form.imageUrl}
-        onChange={handleChange}
-      />
-      <FormField
-        label="Condiciones (opcional)"
-        name="conditions"
-        textarea
-        placeholder="Requisitos de participación, restricciones, etc."
-        value={form.conditions}
-        onChange={handleChange}
-      />
-      <FormField
-        label="Entrega del premio (opcional)"
-        name="deliveryInfo"
-        textarea
-        placeholder="¿Cómo y dónde se entrega el premio?"
-        value={form.deliveryInfo}
-        onChange={handleChange}
-      />
+      <div className="space-y-5">
+        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+          Metadata (off-chain)
+        </p>
+        <FormField
+          label="Título"
+          name="title"
+          required
+          placeholder="ej. Rifa de la bici"
+          value={form.title}
+          onChange={handleChange}
+        />
+        <FormField
+          label="Descripción"
+          name="description"
+          required
+          textarea
+          placeholder="Describí el premio y las condiciones generales."
+          value={form.description}
+          onChange={handleChange}
+        />
+        <FormField
+          label="Organizador"
+          name="organizerName"
+          required
+          placeholder="Nombre del organizador"
+          value={form.organizerName}
+          onChange={handleChange}
+        />
+        <FormField
+          label="Imagen (URL, opcional)"
+          name="imageUrl"
+          type="url"
+          placeholder="https://..."
+          value={form.imageUrl}
+          onChange={handleChange}
+        />
+        <FormField
+          label="Condiciones (opcional)"
+          name="conditions"
+          textarea
+          placeholder="Requisitos de participación, restricciones, etc."
+          value={form.conditions}
+          onChange={handleChange}
+        />
+        <FormField
+          label="Entrega del premio (opcional)"
+          name="deliveryInfo"
+          textarea
+          placeholder="¿Cómo y dónde se entrega el premio?"
+          value={form.deliveryInfo}
+          onChange={handleChange}
+        />
+      </div>
 
       <button
         type="submit"
         disabled={loading}
         className="w-full bg-indigo-600 text-white py-2.5 rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
-        {loading ? "Creando..." : "Crear rifa"}
+        {!isConnected
+          ? "Conectar wallet"
+          : loading
+          ? "Procesando…"
+          : "Crear rifa en blockchain"}
       </button>
     </form>
   );
