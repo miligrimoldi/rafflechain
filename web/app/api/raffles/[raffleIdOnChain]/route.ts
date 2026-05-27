@@ -43,6 +43,73 @@ export async function GET(_request: Request, { params }: Params) {
   }
 }
 
+export async function DELETE(request: Request, { params }: Params) {
+  const { raffleIdOnChain: rawId } = await params;
+  const id = parseId(rawId);
+
+  if (id === null) {
+    return NextResponse.json({ error: "raffleIdOnChain must be an integer" }, { status: 400 });
+  }
+
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  const { signature, timestamp } = body;
+
+  if (typeof signature !== "string" || typeof timestamp !== "number") {
+    return NextResponse.json({ error: "Firma requerida para eliminar" }, { status: 401 });
+  }
+
+  if (Math.abs(Date.now() - timestamp) > 600_000) {
+    return NextResponse.json({ error: "Firma expirada. Intentá de nuevo." }, { status: 401 });
+  }
+
+  try {
+    const message = `Delete RaffleChain metadata #${id}\nTimestamp: ${timestamp}`;
+    const recoveredAddress = ethers.verifyMessage(message, signature);
+
+    const contract = getReadContract();
+    const onChainRaffle = await contract.getRaffle(id);
+    const organizer: string = onChainRaffle.organizer;
+
+    if (recoveredAddress.toLowerCase() !== organizer.toLowerCase()) {
+      return NextResponse.json(
+        { error: "No autorizado: solo el organizador puede eliminar la publicación" },
+        { status: 403 }
+      );
+    }
+
+    const status = Number(onChainRaffle.status);
+    if (status !== 2 && status !== 3) {
+      return NextResponse.json(
+        { error: "Solo se puede eliminar una rifa con ganador seleccionado o cancelada" },
+        { status: 409 }
+      );
+    }
+  } catch {
+    return NextResponse.json({ error: "Error al verificar la firma" }, { status: 401 });
+  }
+
+  try {
+    const existing = await prisma.raffleMetadata.findUnique({
+      where: { raffleIdOnChain: id },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: "Raffle metadata not found" }, { status: 404 });
+    }
+
+    await prisma.raffleMetadata.delete({ where: { raffleIdOnChain: id } });
+
+    return NextResponse.json({ success: true });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
 export async function PATCH(request: Request, { params }: Params) {
   const { raffleIdOnChain: rawId } = await params;
   const id = parseId(rawId);

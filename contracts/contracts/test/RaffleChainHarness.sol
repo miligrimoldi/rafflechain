@@ -24,4 +24,9 @@ contract RaffleChainHarness is RaffleChain {
     ) external {
         _selectWinner(raffleId, randomNumber);
     }
+
+    function exposedForceWaitingRandomness(uint256 raffleId) external {
+        _raffles[raffleId].status = RaffleStatus.WAITING_RANDOMNESS;
+        _raffles[raffleId].vrfRequestTimestamp = block.timestamp;
+    }
 }

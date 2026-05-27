@@ -7,6 +7,8 @@ import { useWallet } from "@/context/WalletContext";
 import { getReadContract } from "@/lib/contract";
 import FormField from "./FormField";
 
+const DELETABLE_STATUSES = [2, 3]; // WINNER_SELECTED, CANCELLED
+
 type EditState = {
   title: string;
   description: string;
@@ -20,23 +22,25 @@ export default function EditRaffleMetadataForm({ raffle }: { raffle: RaffleMetad
   const router = useRouter();
   const { address, signer, isConnected, isWrongNetwork, connect } = useWallet();
   const [isOrganizer, setIsOrganizer] = useState(false);
+  const [canDelete, setCanDelete] = useState(false);
   const [open, setOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     async function checkOrganizer() {
-      if (!address) { setIsOrganizer(false); return; }
+      if (!address) { setIsOrganizer(false); setCanDelete(false); return; }
       try {
         const contract = getReadContract();
         const onChainRaffle = await contract.getRaffle(raffle.raffleIdOnChain);
         if (cancelled) return;
-        setIsOrganizer(
-          (onChainRaffle.organizer as string).toLowerCase() === address.toLowerCase()
-        );
+        const isOrg = (onChainRaffle.organizer as string).toLowerCase() === address.toLowerCase();
+        setIsOrganizer(isOrg);
+        setCanDelete(isOrg && DELETABLE_STATUSES.includes(Number(onChainRaffle.status)));
       } catch {
-        if (!cancelled) setIsOrganizer(false);
+        if (!cancelled) { setIsOrganizer(false); setCanDelete(false); }
       }
     }
     checkOrganizer();
@@ -126,17 +130,84 @@ export default function EditRaffleMetadataForm({ raffle }: { raffle: RaffleMetad
     }
   }
 
+  async function handleDelete() {
+    if (!signer) return;
+    setError(null);
+    setLoading(true);
+    try {
+      const timestamp = Date.now();
+      const message = `Delete RaffleChain metadata #${raffle.raffleIdOnChain}\nTimestamp: ${timestamp}`;
+      const signature = await signer.signMessage(message);
+
+      const res = await fetch(`/api/raffles/${raffle.raffleIdOnChain}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ signature, timestamp }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Error al eliminar.");
+        setConfirmDelete(false);
+        return;
+      }
+
+      router.push("/");
+    } catch (err: unknown) {
+      const msg = (err as { reason?: string; message?: string }).reason
+        ?? (err as { message?: string }).message
+        ?? "Error desconocido";
+      setError(msg);
+      setConfirmDelete(false);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   if (!isOrganizer) return null;
 
   if (!open) {
     return (
       <div className="mt-8 pt-6 border-t border-gray-100">
-        <button
-          onClick={() => setOpen(true)}
-          className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
-        >
-          Editar metadata →
-        </button>
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => setOpen(true)}
+            className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+          >
+            Editar metadata →
+          </button>
+          {canDelete && !confirmDelete && (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="text-sm text-red-500 hover:text-red-700"
+            >
+              Eliminar publicación
+            </button>
+          )}
+          {canDelete && confirmDelete && (
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-600">¿Estás segura?</span>
+              <button
+                onClick={handleDelete}
+                disabled={loading}
+                className="text-sm font-medium text-white bg-red-600 hover:bg-red-700 px-3 py-1 rounded-lg disabled:opacity-50 transition-colors"
+              >
+                {loading ? "Eliminando…" : "Sí, eliminar"}
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="text-sm text-gray-500 hover:text-gray-700"
+              >
+                Cancelar
+              </button>
+            </div>
+          )}
+        </div>
+        {error && (
+          <p className="mt-2 text-sm text-red-700 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">
+            {error}
+          </p>
+        )}
       </div>
     );
   }

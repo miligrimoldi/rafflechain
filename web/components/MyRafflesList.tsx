@@ -101,7 +101,11 @@ export default function MyRafflesList() {
     <ul className="space-y-3">
       {items.map((item) => {
         const ended = Date.now() / 1000 >= Number(item.onChain.endTime);
-        const statusLabel = STATUS_LABELS[item.onChain.status] ?? "Desconocido";
+        const status = Number(item.onChain.status);
+        const statusLabel =
+          status === 0 && ended
+            ? "Terminada"
+            : STATUS_LABELS[status] ?? "Desconocido";
         const endDate = new Date(Number(item.onChain.endTime) * 1000).toLocaleDateString("es-AR", {
           dateStyle: "medium",
         });
@@ -123,7 +127,9 @@ export default function MyRafflesList() {
               <div className="flex flex-col items-end gap-1">
                 <span
                   className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                    item.onChain.status === 2
+                    status === 3
+                      ? "bg-gray-100 text-gray-500"
+                      : status === 2
                       ? "bg-green-100 text-green-700"
                       : ended
                       ? "bg-amber-100 text-amber-700"

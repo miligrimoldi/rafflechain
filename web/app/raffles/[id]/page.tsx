@@ -5,6 +5,7 @@ import EditRaffleMetadataForm from "@/components/EditRaffleMetadataForm";
 import OnChainRaffleInfo from "@/components/OnChainRaffleInfo";
 import BuyTicketsForm from "@/components/BuyTicketsForm";
 import OrganizerActions from "@/components/OrganizerActions";
+import ClaimRefundForm from "@/components/ClaimRefundForm";
 
 export const dynamic = "force-dynamic";
 
@@ -64,6 +65,7 @@ export default async function RaffleDetailPage({ params }: Props) {
 
             <OnChainRaffleInfo raffleIdOnChain={raffle.raffleIdOnChain} />
             <BuyTicketsForm raffleIdOnChain={raffle.raffleIdOnChain} />
+            <ClaimRefundForm raffleIdOnChain={raffle.raffleIdOnChain} />
             <OrganizerActions raffleIdOnChain={raffle.raffleIdOnChain} />
 
             <EditRaffleMetadataForm raffle={raffle} />

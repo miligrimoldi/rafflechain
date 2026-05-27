@@ -10,6 +10,7 @@ export const STATUS_LABELS: Record<number, string> = {
   0: "Activa",
   1: "Esperando aleatoriedad",
   2: "Ganador seleccionado",
+  3: "Cancelada",
 };
 
 export type OnChainRaffle = {
@@ -26,6 +27,7 @@ export type OnChainRaffle = {
   status: number;
   fundsWithdrawn: boolean;
   prizeClaimed: boolean;
+  vrfRequestTimestamp: bigint;
 };
 
 export function getReadContract(): ethers.Contract {

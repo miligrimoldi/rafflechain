@@ -10,7 +10,8 @@ contract RaffleChain is ERC721, ReentrancyGuard, VRFConsumerBaseV2Plus {
     enum RaffleStatus {
         ACTIVE,
         WAITING_RANDOMNESS,
-        WINNER_SELECTED
+        WINNER_SELECTED,
+        CANCELLED
     }
 
     struct Raffle {
@@ -27,6 +28,7 @@ contract RaffleChain is ERC721, ReentrancyGuard, VRFConsumerBaseV2Plus {
         RaffleStatus status;
         bool fundsWithdrawn;
         bool prizeClaimed;
+        uint256 vrfRequestTimestamp;
     }
 
     uint256 private _nextRaffleId;
@@ -38,12 +40,15 @@ contract RaffleChain is ERC721, ReentrancyGuard, VRFConsumerBaseV2Plus {
 
     uint16 private constant REQUEST_CONFIRMATIONS = 3;
     uint32 private constant NUM_WORDS = 1;
+    uint256 private constant VRF_TIMEOUT = 1 hours;
+    uint256 private constant CANCEL_TIMEOUT = 24 hours;
 
-    mapping(uint256 => Raffle) private _raffles;
+    mapping(uint256 => Raffle) internal _raffles;
     mapping(uint256 => uint256) private _requestToRaffleId;
 
     mapping(uint256 => mapping(uint256 => address)) private _ticketOwner;
     mapping(uint256 => mapping(uint256 => uint256)) private _soldTicketNumbers;
+    mapping(uint256 => mapping(uint256 => bool)) private _ticketRefunded;
 
     mapping(uint256 => uint256) private _tokenRaffleId;
     mapping(uint256 => uint256) private _tokenTicketNumber;
@@ -84,6 +89,21 @@ contract RaffleChain is ERC721, ReentrancyGuard, VRFConsumerBaseV2Plus {
     event PrizeClaimed(
         uint256 indexed raffleId,
         address indexed winner
+    );
+
+    event WinnerRequestRetried(
+        uint256 indexed raffleId,
+        uint256 indexed newRequestId
+    );
+
+    event RaffleCancelled(
+        uint256 indexed raffleId
+    );
+
+    event RefundClaimed(
+        uint256 indexed raffleId,
+        address indexed buyer,
+        uint256 ticketNumber
     );
 
     constructor(
@@ -132,7 +152,8 @@ contract RaffleChain is ERC721, ReentrancyGuard, VRFConsumerBaseV2Plus {
             randomNumber: 0,
             status: RaffleStatus.ACTIVE,
             fundsWithdrawn: false,
-            prizeClaimed: false
+            prizeClaimed: false,
+            vrfRequestTimestamp: 0
         });
 
         emit RaffleCreated(raffleId, msg.sender, ticketPrice, maxTickets, endTime);
@@ -148,10 +169,10 @@ contract RaffleChain is ERC721, ReentrancyGuard, VRFConsumerBaseV2Plus {
 
         require(raffle.status == RaffleStatus.ACTIVE, "RaffleChain: raffle is not active");
         require(block.timestamp < raffle.endTime, "RaffleChain: raffle has ended");
+        require(raffle.ticketsSold < raffle.maxTickets, "RaffleChain: sold out");
         require(ticketNumber >= 1 && ticketNumber <= raffle.maxTickets, "RaffleChain: invalid ticket number");
         require(_ticketOwner[raffleId][ticketNumber] == address(0), "RaffleChain: ticket already sold");
         require(msg.value == raffle.ticketPrice, "RaffleChain: incorrect ETH amount");
-        require(raffle.ticketsSold < raffle.maxTickets, "RaffleChain: sold out");
 
         uint256 tokenId = _nextTokenId++;
 
@@ -171,34 +192,89 @@ contract RaffleChain is ERC721, ReentrancyGuard, VRFConsumerBaseV2Plus {
 
     function requestWinner(
         uint256 raffleId
-    ) external raffleExists(raffleId) returns (uint256 requestId) {
+    ) external nonReentrant raffleExists(raffleId) returns (uint256 requestId) {
         Raffle storage raffle = _raffles[raffleId];
 
-        require(msg.sender == raffle.organizer, "RaffleChain: only organizer");
         require(raffle.status == RaffleStatus.ACTIVE, "RaffleChain: raffle is not active");
-        require(isRaffleEndedInternal(raffleId), "RaffleChain: raffle has not ended yet");
+        require(_isRaffleEnded(raffleId), "RaffleChain: raffle has not ended yet");
         require(raffle.ticketsSold > 0, "RaffleChain: no tickets sold");
 
         raffle.status = RaffleStatus.WAITING_RANDOMNESS;
+        raffle.vrfRequestTimestamp = block.timestamp;
 
-        requestId = s_vrfCoordinator.requestRandomWords(
-            VRFV2PlusClient.RandomWordsRequest({
-                keyHash: i_keyHash,
-                subId: i_subscriptionId,
-                requestConfirmations: REQUEST_CONFIRMATIONS,
-                callbackGasLimit: i_callbackGasLimit,
-                numWords: NUM_WORDS,
-                extraArgs: VRFV2PlusClient._argsToBytes(
-                    VRFV2PlusClient.ExtraArgsV1({
-                        nativePayment: true
-                    })
-                )
-            })
-        );
-
+        requestId = _requestVRF();
         _requestToRaffleId[requestId] = raffleId;
 
         emit RandomnessRequested(raffleId, requestId);
+    }
+
+    function retryWinnerRequest(
+        uint256 raffleId
+    ) external nonReentrant raffleExists(raffleId) returns (uint256 requestId) {
+        Raffle storage raffle = _raffles[raffleId];
+
+        require(raffle.status == RaffleStatus.WAITING_RANDOMNESS, "RaffleChain: not waiting randomness");
+        require(
+            block.timestamp >= raffle.vrfRequestTimestamp + VRF_TIMEOUT,
+            "RaffleChain: VRF timeout not reached"
+        );
+
+        raffle.vrfRequestTimestamp = block.timestamp;
+
+        requestId = _requestVRF();
+        _requestToRaffleId[requestId] = raffleId;
+
+        emit WinnerRequestRetried(raffleId, requestId);
+    }
+
+    // Cancels a raffle that ended with zero tickets sold, leaving no closure otherwise.
+    function cancelEmptyRaffle(
+        uint256 raffleId
+    ) external raffleExists(raffleId) {
+        Raffle storage raffle = _raffles[raffleId];
+
+        require(raffle.status == RaffleStatus.ACTIVE, "RaffleChain: raffle is not active");
+        require(_isRaffleEnded(raffleId), "RaffleChain: raffle has not ended yet");
+        require(raffle.ticketsSold == 0, "RaffleChain: raffle has tickets sold");
+
+        raffle.status = RaffleStatus.CANCELLED;
+
+        emit RaffleCancelled(raffleId);
+    }
+
+    // Cancels a raffle stuck in WAITING_RANDOMNESS after CANCEL_TIMEOUT, enabling buyer refunds.
+    function cancelStuckRaffle(
+        uint256 raffleId
+    ) external raffleExists(raffleId) {
+        Raffle storage raffle = _raffles[raffleId];
+
+        require(raffle.status == RaffleStatus.WAITING_RANDOMNESS, "RaffleChain: not waiting randomness");
+        require(
+            block.timestamp >= raffle.vrfRequestTimestamp + CANCEL_TIMEOUT,
+            "RaffleChain: cancel timeout not reached"
+        );
+
+        raffle.status = RaffleStatus.CANCELLED;
+
+        emit RaffleCancelled(raffleId);
+    }
+
+    function claimRefund(
+        uint256 raffleId,
+        uint256 ticketNumber
+    ) external nonReentrant raffleExists(raffleId) {
+        Raffle storage raffle = _raffles[raffleId];
+
+        require(raffle.status == RaffleStatus.CANCELLED, "RaffleChain: raffle is not cancelled");
+        require(_ticketOwner[raffleId][ticketNumber] == msg.sender, "RaffleChain: not ticket owner");
+        require(!_ticketRefunded[raffleId][ticketNumber], "RaffleChain: refund already claimed");
+
+        _ticketRefunded[raffleId][ticketNumber] = true;
+
+        (bool success, ) = msg.sender.call{value: raffle.ticketPrice}("");
+        require(success, "RaffleChain: refund transfer failed");
+
+        emit RefundClaimed(raffleId, msg.sender, ticketNumber);
     }
 
     function withdrawFunds(
@@ -274,7 +350,7 @@ contract RaffleChain is ERC721, ReentrancyGuard, VRFConsumerBaseV2Plus {
     function isRaffleEnded(
         uint256 raffleId
     ) external view raffleExists(raffleId) returns (bool) {
-        return isRaffleEndedInternal(raffleId);
+        return _isRaffleEnded(raffleId);
     }
 
     function fulfillRandomWords(
@@ -284,10 +360,9 @@ contract RaffleChain is ERC721, ReentrancyGuard, VRFConsumerBaseV2Plus {
         uint256 raffleId = _requestToRaffleId[requestId];
         Raffle storage raffle = _raffles[raffleId];
 
-        require(
-            raffle.status == RaffleStatus.WAITING_RANDOMNESS,
-            "RaffleChain: not waiting randomness"
-        );
+        // If the raffle was cancelled while waiting (e.g. via cancelStuckRaffle),
+        // a late VRF response should be ignored rather than reverting.
+        if (raffle.status != RaffleStatus.WAITING_RANDOMNESS) return;
 
         _selectWinner(raffleId, randomWords[0]);
     }
@@ -310,11 +385,28 @@ contract RaffleChain is ERC721, ReentrancyGuard, VRFConsumerBaseV2Plus {
         emit WinnerSelected(raffleId, winner, winningTicketNumber, randomNumber);
     }
 
-    function isRaffleEndedInternal(
+    function _isRaffleEnded(
         uint256 raffleId
     ) internal view returns (bool) {
         Raffle storage raffle = _raffles[raffleId];
 
         return block.timestamp >= raffle.endTime || raffle.ticketsSold == raffle.maxTickets;
+    }
+
+    function _requestVRF() internal returns (uint256 requestId) {
+        return s_vrfCoordinator.requestRandomWords(
+            VRFV2PlusClient.RandomWordsRequest({
+                keyHash: i_keyHash,
+                subId: i_subscriptionId,
+                requestConfirmations: REQUEST_CONFIRMATIONS,
+                callbackGasLimit: i_callbackGasLimit,
+                numWords: NUM_WORDS,
+                extraArgs: VRFV2PlusClient._argsToBytes(
+                    VRFV2PlusClient.ExtraArgsV1({
+                        nativePayment: true
+                    })
+                )
+            })
+        );
     }
 }

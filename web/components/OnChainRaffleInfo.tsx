@@ -72,7 +72,7 @@ export default function OnChainRaffleInfo({ raffleIdOnChain }: Props) {
           label="Cierre"
           value={endDate.toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" })}
         />
-        {raffle.status === 2 && (
+        {Number(raffle.status) === 2 && (
           <>
             <Row label="Ticket ganador" value={String(raffle.winningTicketNumber)} />
             {!isZeroWinner && (
@@ -84,6 +84,11 @@ export default function OnChainRaffleInfo({ raffleIdOnChain }: Props) {
           </>
         )}
       </dl>
+      {Number(raffle.status) === 3 && (
+        <p className="mt-4 text-sm text-red-600 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">
+          Esta rifa fue cancelada. Los compradores de tickets pueden reclamar su reembolso abajo.
+        </p>
+      )}
     </div>
   );
 }
