@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const organizer = searchParams.get("organizer");
+
   try {
     const raffles = await prisma.raffleMetadata.findMany({
+      where: organizer
+        ? { organizerAddress: organizer.toLowerCase() }
+        : undefined,
       orderBy: { createdAt: "desc" },
     });
     return NextResponse.json(raffles);
@@ -20,7 +26,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { raffleIdOnChain, title, description, organizerName, imageUrl, conditions, deliveryInfo } = body;
+  const { raffleIdOnChain, title, description, organizerName, organizerAddress, imageUrl, conditions, deliveryInfo } = body;
 
   if (raffleIdOnChain === undefined || raffleIdOnChain === null) {
     return NextResponse.json({ error: "raffleIdOnChain is required" }, { status: 400 });
@@ -55,6 +61,7 @@ export async function POST(request: Request) {
         title: title.trim(),
         description: description.trim(),
         organizerName: organizerName.trim(),
+        organizerAddress: typeof organizerAddress === "string" ? organizerAddress.toLowerCase() : null,
         imageUrl: typeof imageUrl === "string" ? imageUrl : null,
         conditions: typeof conditions === "string" ? conditions : null,
         deliveryInfo: typeof deliveryInfo === "string" ? deliveryInfo : null,

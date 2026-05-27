@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { RaffleMetadata } from "@prisma/client";
+import { useWallet } from "@/context/WalletContext";
+import { getReadContract } from "@/lib/contract";
 import FormField from "./FormField";
 
 type EditState = {
@@ -16,9 +18,30 @@ type EditState = {
 
 export default function EditRaffleMetadataForm({ raffle }: { raffle: RaffleMetadata }) {
   const router = useRouter();
+  const { address, signer, isConnected, isWrongNetwork, connect } = useWallet();
+  const [isOrganizer, setIsOrganizer] = useState(false);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function checkOrganizer() {
+      if (!address) { setIsOrganizer(false); return; }
+      try {
+        const contract = getReadContract();
+        const onChainRaffle = await contract.getRaffle(raffle.raffleIdOnChain);
+        if (cancelled) return;
+        setIsOrganizer(
+          (onChainRaffle.organizer as string).toLowerCase() === address.toLowerCase()
+        );
+      } catch {
+        if (!cancelled) setIsOrganizer(false);
+      }
+    }
+    checkOrganizer();
+    return () => { cancelled = true; };
+  }, [address, raffle.raffleIdOnChain]);
 
   const [form, setForm] = useState<EditState>({
     title: raffle.title,
@@ -36,7 +59,6 @@ export default function EditRaffleMetadataForm({ raffle }: { raffle: RaffleMetad
   function handleCancel() {
     setOpen(false);
     setError(null);
-    // reset to server values on cancel
     setForm({
       title: raffle.title,
       description: raffle.description,
@@ -49,14 +71,33 @@ export default function EditRaffleMetadataForm({ raffle }: { raffle: RaffleMetad
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
     setError(null);
 
+    if (!isConnected) {
+      await connect();
+      return;
+    }
+    if (isWrongNetwork) {
+      setError("Cambiá a la red Sepolia antes de continuar.");
+      return;
+    }
+    if (!signer) {
+      setError("Wallet no conectada.");
+      return;
+    }
+
+    setLoading(true);
     try {
+      const timestamp = Date.now();
+      const message = `Edit RaffleChain metadata #${raffle.raffleIdOnChain}\nTimestamp: ${timestamp}`;
+      const signature = await signer.signMessage(message);
+
       const res = await fetch(`/api/raffles/${raffle.raffleIdOnChain}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          signature,
+          timestamp,
           title: form.title,
           description: form.description,
           organizerName: form.organizerName,
@@ -74,13 +115,18 @@ export default function EditRaffleMetadataForm({ raffle }: { raffle: RaffleMetad
       }
 
       setOpen(false);
-      router.refresh(); // re-fetch server component data
-    } catch {
-      setError("Error de red. Intentá de nuevo.");
+      router.refresh();
+    } catch (err: unknown) {
+      const msg = (err as { reason?: string; message?: string }).reason
+        ?? (err as { message?: string }).message
+        ?? "Error desconocido";
+      setError(msg);
     } finally {
       setLoading(false);
     }
   }
+
+  if (!isOrganizer) return null;
 
   if (!open) {
     return (
@@ -105,49 +151,12 @@ export default function EditRaffleMetadataForm({ raffle }: { raffle: RaffleMetad
           </div>
         )}
 
-        <FormField
-          label="Título"
-          name="title"
-          required
-          value={form.title}
-          onChange={handleChange}
-        />
-        <FormField
-          label="Descripción"
-          name="description"
-          required
-          textarea
-          value={form.description}
-          onChange={handleChange}
-        />
-        <FormField
-          label="Organizador"
-          name="organizerName"
-          required
-          value={form.organizerName}
-          onChange={handleChange}
-        />
-        <FormField
-          label="Imagen (URL)"
-          name="imageUrl"
-          type="url"
-          value={form.imageUrl}
-          onChange={handleChange}
-        />
-        <FormField
-          label="Condiciones"
-          name="conditions"
-          textarea
-          value={form.conditions}
-          onChange={handleChange}
-        />
-        <FormField
-          label="Entrega del premio"
-          name="deliveryInfo"
-          textarea
-          value={form.deliveryInfo}
-          onChange={handleChange}
-        />
+        <FormField label="Título" name="title" required value={form.title} onChange={handleChange} />
+        <FormField label="Descripción" name="description" required textarea value={form.description} onChange={handleChange} />
+        <FormField label="Organizador" name="organizerName" required value={form.organizerName} onChange={handleChange} />
+        <FormField label="Imagen (URL)" name="imageUrl" type="url" value={form.imageUrl} onChange={handleChange} />
+        <FormField label="Condiciones" name="conditions" textarea value={form.conditions} onChange={handleChange} />
+        <FormField label="Entrega del premio" name="deliveryInfo" textarea value={form.deliveryInfo} onChange={handleChange} />
 
         <div className="flex gap-3 pt-1">
           <button

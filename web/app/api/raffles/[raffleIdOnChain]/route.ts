@@ -1,15 +1,13 @@
 import { NextResponse } from "next/server";
+import { ethers } from "ethers";
 import { prisma } from "@/lib/prisma";
+import { getReadContract } from "@/lib/contract";
 
 type Params = { params: Promise<{ raffleIdOnChain: string }> };
 
-// Required string fields — cannot be set to null.
 const REQUIRED_FIELDS = ["title", "description", "organizerName"] as const;
-// Optional fields — can be set to string or null.
 const OPTIONAL_FIELDS = ["imageUrl", "conditions", "deliveryInfo"] as const;
 
-// Shape that mirrors RaffleMetadataUpdateInput but avoids importing the Prisma
-// namespace (which TypeScript doesn't propagate through export * chains).
 type UpdateData = {
   title?: string;
   description?: string;
@@ -60,7 +58,37 @@ export async function PATCH(request: Request, { params }: Params) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  // Build update payload — only allowed fields, raffleIdOnChain excluded.
+  // Verify signature
+  const { signature, timestamp } = body;
+
+  if (typeof signature !== "string" || typeof timestamp !== "number") {
+    return NextResponse.json({ error: "Firma requerida para editar" }, { status: 401 });
+  }
+
+  // Reject signatures older than 10 minutes
+  if (Math.abs(Date.now() - timestamp) > 600_000) {
+    return NextResponse.json({ error: "Firma expirada. Intentá de nuevo." }, { status: 401 });
+  }
+
+  try {
+    const message = `Edit RaffleChain metadata #${id}\nTimestamp: ${timestamp}`;
+    const recoveredAddress = ethers.verifyMessage(message, signature);
+
+    const contract = getReadContract();
+    const onChainRaffle = await contract.getRaffle(id);
+    const organizer: string = onChainRaffle.organizer;
+
+    if (recoveredAddress.toLowerCase() !== organizer.toLowerCase()) {
+      return NextResponse.json(
+        { error: "No autorizado: solo el organizador puede editar la metadata" },
+        { status: 403 }
+      );
+    }
+  } catch {
+    return NextResponse.json({ error: "Error al verificar la firma" }, { status: 401 });
+  }
+
+  // Build update payload
   const data: UpdateData = {};
 
   for (const field of REQUIRED_FIELDS) {

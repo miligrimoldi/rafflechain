@@ -113,11 +113,13 @@ export default function CreateRaffleForm() {
 
       // 4. Guardar metadata off-chain
       setStatus("Guardando metadata…");
+      const organizerAddress = await signer.getAddress();
       const res = await fetch("/api/raffles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           raffleIdOnChain,
+          organizerAddress: organizerAddress.toLowerCase(),
           title: form.title,
           description: form.description,
           organizerName: form.organizerName,
