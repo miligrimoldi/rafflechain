@@ -1,3 +1,5 @@
+// contracts/test/RaffleChainHarness.sol
+
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
@@ -10,18 +12,14 @@ contract RaffleChainHarness is RaffleChain {
         bytes32 keyHash,
         uint32 callbackGasLimit
     )
-        RaffleChain(
-            subscriptionId,
-            vrfCoordinator,
-            keyHash,
-            callbackGasLimit
-        )
+        RaffleChain(subscriptionId, vrfCoordinator, keyHash, callbackGasLimit)
     {}
 
     function exposedSelectWinner(
         uint256 raffleId,
         uint256 randomNumber
     ) external {
+        _raffles[raffleId].status = RaffleStatus.WAITING_RANDOMNESS;
         _selectWinner(raffleId, randomNumber);
     }
 
