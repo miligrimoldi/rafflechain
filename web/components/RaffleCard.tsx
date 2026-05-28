@@ -1,13 +1,7 @@
 import Link from "next/link";
 import type { RaffleMetadata } from "@prisma/client";
+import RaffleStatusBadge from "./RaffleStatusBadge";
 
-// TODO(blockchain): Extender las props para recibir también datos on-chain.
-// La card deberá combinar metadata off-chain (Prisma) con datos del contrato:
-//   - ticketPrice  → getRaffle(id).ticketPrice  → mostrar en ETH (formatEther)
-//   - ticketsSold  → getTicketsSold(id)          → ej. "3 / 10 tickets"
-//   - status       → getRaffle(id).status        → ACTIVE | WAITING_RANDOMNESS | WINNER_SELECTED
-//   - winner       → getRaffle(id).winner        → address ganadora (si hubo sorteo)
-// Estos datos se mostrarán como chips/badges en el footer de la card.
 export default function RaffleCard({ raffle }: { raffle: RaffleMetadata }) {
   return (
     <Link
@@ -22,9 +16,12 @@ export default function RaffleCard({ raffle }: { raffle: RaffleMetadata }) {
         />
       )}
       <div className="p-5">
-        <span className="inline-block text-xs font-mono text-gray-400 bg-gray-50 px-2 py-0.5 rounded mb-2">
-          #{raffle.raffleIdOnChain}
-        </span>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-mono text-gray-400 bg-gray-50 px-2 py-0.5 rounded">
+            #{raffle.raffleIdOnChain}
+          </span>
+          <RaffleStatusBadge raffleIdOnChain={raffle.raffleIdOnChain} />
+        </div>
         <h2 className="text-base font-semibold text-gray-900 group-hover:text-indigo-700 transition-colors leading-snug mb-1">
           {raffle.title}
         </h2>
