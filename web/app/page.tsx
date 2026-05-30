@@ -65,7 +65,7 @@ export default async function HomePage() {
             <>
               <h2 className="section-label">Rifas en vivo</h2>
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 stagger-children">
-                {raffles.map((raffle) => (
+                {raffles.map((raffle: (typeof raffles)[0]) => (
                   <RaffleCard key={raffle.id} raffle={raffle} />
                 ))}
               </div>
