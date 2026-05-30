@@ -11,11 +11,11 @@ type BadgeState = {
 function getBadge(status: number, endTime: bigint, ticketsSold: bigint, maxTickets: bigint): BadgeState {
   const ended = Date.now() / 1000 >= Number(endTime) || ticketsSold === maxTickets;
 
-  if (status === 3) return { label: "Cancelada",              className: "bg-gray-100 text-gray-500" };
-  if (status === 2) return { label: "Ganador seleccionado",   className: "bg-green-100 text-green-700" };
-  if (status === 1) return { label: "Sorteando…",             className: "bg-yellow-100 text-yellow-700" };
-  if (ended)        return { label: "Terminada",              className: "bg-amber-100 text-amber-700" };
-  return              { label: "Activa",                      className: "bg-indigo-100 text-indigo-700" };
+  if (status === 3) return { label: "Cancelada", className: "badge badge-cancelled" };
+  if (status === 2) return { label: "Ganador", className: "badge badge-winner" };
+  if (status === 1) return { label: "Sorteando", className: "badge badge-drawing" };
+  if (ended) return { label: "Terminada", className: "badge badge-ended" };
+  return { label: "Activa", className: "badge badge-active" };
 }
 
 export default function RaffleStatusBadge({ raffleIdOnChain }: { raffleIdOnChain: number }) {
@@ -43,9 +43,5 @@ export default function RaffleStatusBadge({ raffleIdOnChain }: { raffleIdOnChain
 
   if (!badge) return null;
 
-  return (
-    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${badge.className}`}>
-      {badge.label}
-    </span>
-  );
+  return <span className={badge.className}>{badge.label}</span>;
 }
