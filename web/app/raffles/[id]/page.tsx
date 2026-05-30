@@ -24,30 +24,28 @@ export default async function RaffleDetailPage({ params }: Props) {
   if (!raffle) notFound();
 
   return (
-    <main className="min-h-screen bg-gray-50">
-      <div className="max-w-2xl mx-auto px-4 py-12">
-        <Link href="/" className="text-sm text-indigo-600 hover:text-indigo-800">
+    <main className="page-main">
+      <div className="page-container-narrow">
+        <Link href="/" className="btn-link inline-flex items-center gap-1">
           ← Volver al inicio
         </Link>
 
-        <div className="bg-white rounded-xl border border-gray-200 mt-4 overflow-hidden">
+        <article className="card-elevated mt-8 animate-[fade-in-up_0.55s_ease-out_both]">
           {raffle.imageUrl && (
-            <img
-              src={raffle.imageUrl}
-              alt={raffle.title}
-              className="w-full h-56 object-cover"
-            />
+            <div className="detail-image-wrap">
+              <img src={raffle.imageUrl} alt={raffle.title} />
+              <div className="detail-image-overlay" />
+            </div>
           )}
 
-          <div className="p-8">
-            <span className="inline-block text-xs font-mono text-gray-400 bg-gray-50 border border-gray-100 px-2 py-0.5 rounded mb-3">
-              ID on-chain #{raffle.raffleIdOnChain}
+          <div className="p-6 sm:p-9">
+            <span className="badge-id mb-5 inline-block">
+              #{raffle.raffleIdOnChain} on-chain
             </span>
 
-            <h1 className="text-2xl font-bold text-gray-900 mb-1">{raffle.title}</h1>
-            <p className="text-sm text-gray-500 mb-6">
-              Organizado por{" "}
-              <span className="font-medium text-gray-700">{raffle.organizerName}</span>
+            <h1 className="detail-hero-title mb-3">{raffle.title}</h1>
+            <p className="detail-meta mb-10">
+              Organizado por <strong>{raffle.organizerName}</strong>
             </p>
 
             <Section title="Descripción" content={raffle.description} />
@@ -58,7 +56,7 @@ export default async function RaffleDetailPage({ params }: Props) {
               <Section title="Entrega del premio" content={raffle.deliveryInfo} />
             )}
 
-            <p className="text-xs text-gray-400 mt-6">
+            <p className="text-xs text-dim mt-10 pt-6 border-t border-[var(--border)]">
               Creado el{" "}
               {raffle.createdAt.toLocaleDateString("es-AR", { dateStyle: "long" })}
             </p>
@@ -70,7 +68,7 @@ export default async function RaffleDetailPage({ params }: Props) {
 
             <EditRaffleMetadataForm raffle={raffle} />
           </div>
-        </div>
+        </article>
       </div>
     </main>
   );
@@ -78,11 +76,9 @@ export default async function RaffleDetailPage({ params }: Props) {
 
 function Section({ title, content }: { title: string; content: string }) {
   return (
-    <div className="mb-5">
-      <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">
-        {title}
-      </h2>
-      <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">{content}</p>
+    <div className="detail-section mb-7">
+      <h2>{title}</h2>
+      <p>{content}</p>
     </div>
   );
 }

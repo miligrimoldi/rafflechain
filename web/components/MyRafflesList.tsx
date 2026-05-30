@@ -17,6 +17,13 @@ type RaffleItem = {
   title: string;
 };
 
+function statusBadgeClass(status: number, ended: boolean): string {
+  if (status === 3) return "badge badge-cancelled";
+  if (status === 2) return "badge badge-winner";
+  if (ended) return "badge badge-ended";
+  return "badge badge-active";
+}
+
 export default function MyRafflesList() {
   const { address, isConnected, connect } = useWallet();
   const [items, setItems] = useState<RaffleItem[]>([]);
@@ -67,12 +74,11 @@ export default function MyRafflesList() {
 
   if (!isConnected) {
     return (
-      <div className="text-center py-16">
-        <p className="text-gray-500 mb-4">Conectá tu wallet para ver tus rifas.</p>
-        <button
-          onClick={connect}
-          className="bg-indigo-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-indigo-700 transition-colors"
-        >
+      <div className="empty-state card">
+        <p className="empty-state-icon">🔗</p>
+        <p className="empty-state-title">Conectá tu wallet</p>
+        <p className="text-muted text-sm mt-2 mb-6">Para ver las rifas que organizaste.</p>
+        <button onClick={connect} className="btn btn-primary btn-glow-ring">
           Conectar wallet
         </button>
       </div>
@@ -80,25 +86,33 @@ export default function MyRafflesList() {
   }
 
   if (loading) {
-    return <div className="text-center py-16 text-gray-400 animate-pulse">Cargando tus rifas…</div>;
+    return (
+      <div className="space-y-3">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="skeleton h-[5.75rem]" />
+        ))}
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="text-center py-16 text-red-600">{error}</div>;
+    return <div className="alert-error text-center">{error}</div>;
   }
 
   if (items.length === 0) {
     return (
-      <div className="text-center py-16 text-gray-400">
-        <p className="text-4xl mb-3">🎟️</p>
-        <p className="text-gray-500">No creaste ninguna rifa todavía.</p>
-        <p className="text-sm mt-1">Usá el botón "+ Nueva rifa" para empezar.</p>
+      <div className="empty-state card">
+        <p className="empty-state-icon">🎟️</p>
+        <p className="empty-state-title">Sin rifas todavía</p>
+        <p className="text-muted text-sm mt-2">
+          Creá la primera y aparecerá acá con su estado on-chain.
+        </p>
       </div>
     );
   }
 
   return (
-    <ul className="space-y-3">
+    <ul className="space-y-3 stagger-children">
       {items.map((item) => {
         const ended = Date.now() / 1000 >= Number(item.onChain.endTime);
         const status = Number(item.onChain.status);
@@ -112,34 +126,19 @@ export default function MyRafflesList() {
 
         return (
           <li key={item.raffleIdOnChain}>
-            <Link
-              href={`/raffles/${item.raffleIdOnChain}`}
-              className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-5 py-4 hover:border-indigo-300 hover:shadow-sm transition-all"
-            >
-              <div>
-                <p className="text-xs font-mono text-gray-400 mb-0.5">#{item.raffleIdOnChain}</p>
-                <p className="font-medium text-gray-900">{item.title}</p>
-                <p className="text-xs text-gray-500 mt-0.5">
+            <Link href={`/raffles/${item.raffleIdOnChain}`} className="list-row-card">
+              <div className="min-w-0">
+                <span className="badge-id mb-2 inline-block">#{item.raffleIdOnChain}</span>
+                <p className="list-row-title truncate">{item.title}</p>
+                <p className="list-row-meta">
                   {Number(item.onChain.ticketsSold)} / {Number(item.onChain.maxTickets)} tickets
                   · cierra {endDate}
                 </p>
               </div>
-              <div className="flex flex-col items-end gap-1">
-                <span
-                  className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                    status === 3
-                      ? "bg-gray-100 text-gray-500"
-                      : status === 2
-                      ? "bg-green-100 text-green-700"
-                      : ended
-                      ? "bg-amber-100 text-amber-700"
-                      : "bg-indigo-100 text-indigo-700"
-                  }`}
-                >
-                  {statusLabel}
-                </span>
-                <span className="text-xs text-gray-400">
-                  {ethers.formatEther(item.onChain.ticketPrice)} ETH / ticket
+              <div className="flex flex-col items-end gap-2 shrink-0">
+                <span className={statusBadgeClass(status, ended)}>{statusLabel}</span>
+                <span className="text-xs font-mono text-dim">
+                  {ethers.formatEther(item.onChain.ticketPrice)} ETH
                 </span>
               </div>
             </Link>

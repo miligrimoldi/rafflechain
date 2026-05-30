@@ -147,21 +147,11 @@ export default function CreateRaffleForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-          {error}
-        </div>
-      )}
-      {status && !error && (
-        <div className="bg-indigo-50 border border-indigo-200 text-indigo-700 px-4 py-3 rounded-lg text-sm">
-          {status}
-        </div>
-      )}
+      {error && <div className="alert-error">{error}</div>}
+      {status && !error && <div className="alert-info">{status}</div>}
 
-      <div className="border-b border-gray-100 pb-5 space-y-5">
-        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-          Datos on-chain
-        </p>
+      <div className="border-b border-[var(--border)] pb-7 space-y-5">
+        <p className="form-section-title">Datos on-chain</p>
         <FormField
           label="Precio del ticket (ETH)"
           name="ticketPrice"
@@ -190,9 +180,7 @@ export default function CreateRaffleForm() {
       </div>
 
       <div className="space-y-5">
-        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-          Metadata (off-chain)
-        </p>
+        <p className="form-section-title">Metadata (off-chain)</p>
         <FormField
           label="Título"
           name="title"
@@ -247,7 +235,7 @@ export default function CreateRaffleForm() {
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-indigo-600 text-white py-2.5 rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="btn btn-primary btn-full btn-glow-ring py-3.5 mt-2"
       >
         {!isConnected
           ? "Conectar wallet"
