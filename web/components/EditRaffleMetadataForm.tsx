@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { RaffleMetadata } from "@prisma/client";
+import type { prisma } from "@/lib/prisma";
+type RaffleMetadata = Awaited<ReturnType<typeof prisma.raffleMetadata.findUnique>> & object;
 import { useWallet } from "@/context/WalletContext";
 import { getReadContract } from "@/lib/contract";
 import FormField from "./FormField";
