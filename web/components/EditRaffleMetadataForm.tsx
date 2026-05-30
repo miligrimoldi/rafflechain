@@ -168,59 +168,52 @@ export default function EditRaffleMetadataForm({ raffle }: { raffle: RaffleMetad
 
   if (!open) {
     return (
-      <div className="mt-8 pt-6 border-t border-gray-100">
-        <div className="flex items-center justify-between">
+      <div className="mt-8 pt-6 border-t border-[var(--border)]">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <button
             onClick={() => setOpen(true)}
-            className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+            className="btn-link"
           >
             Editar metadata →
           </button>
           {canDelete && !confirmDelete && (
             <button
               onClick={() => setConfirmDelete(true)}
-              className="text-sm text-red-500 hover:text-red-700"
+              className="text-sm font-semibold transition-colors"
+              style={{ color: "var(--danger)" }}
             >
               Eliminar publicación
             </button>
           )}
           {canDelete && confirmDelete && (
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-600">¿Estás segura?</span>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-sm text-slate-600">¿Estás segura?</span>
               <button
                 onClick={handleDelete}
                 disabled={loading}
-                className="text-sm font-medium text-white bg-red-600 hover:bg-red-700 px-3 py-1 rounded-lg disabled:opacity-50 transition-colors"
+                className="btn btn-danger btn-sm"
               >
                 {loading ? "Eliminando…" : "Sí, eliminar"}
               </button>
               <button
                 onClick={() => setConfirmDelete(false)}
-                className="text-sm text-gray-500 hover:text-gray-700"
+                className="btn btn-ghost btn-sm"
               >
                 Cancelar
               </button>
             </div>
           )}
         </div>
-        {error && (
-          <p className="mt-2 text-sm text-red-700 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">
-            {error}
-          </p>
-        )}
+        {error && <p className="mt-3 alert-error">{error}</p>}
       </div>
     );
   }
 
   return (
-    <div className="mt-8 pt-6 border-t border-gray-100">
-      <h2 className="text-base font-semibold text-gray-900 mb-4">Editar metadata</h2>
+    <div className="mt-8 pt-6 border-t border-[var(--border)]">
+      <h2 className="detail-hero-title text-xl mb-4">Editar metadata</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-            {error}
-          </div>
-        )}
+        {error && <div className="alert-error">{error}</div>}
 
         <FormField label="Título" name="title" required value={form.title} onChange={handleChange} />
         <FormField label="Descripción" name="description" required textarea value={form.description} onChange={handleChange} />
@@ -229,19 +222,11 @@ export default function EditRaffleMetadataForm({ raffle }: { raffle: RaffleMetad
         <FormField label="Condiciones" name="conditions" textarea value={form.conditions} onChange={handleChange} />
         <FormField label="Entrega del premio" name="deliveryInfo" textarea value={form.deliveryInfo} onChange={handleChange} />
 
-        <div className="flex gap-3 pt-1">
-          <button
-            type="submit"
-            disabled={loading}
-            className="bg-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
+        <div className="flex flex-wrap gap-3 pt-1">
+          <button type="submit" disabled={loading} className="btn btn-primary">
             {loading ? "Guardando..." : "Guardar cambios"}
           </button>
-          <button
-            type="button"
-            onClick={handleCancel}
-            className="px-5 py-2 rounded-lg text-sm border border-gray-300 text-gray-600 hover:border-gray-400 hover:text-gray-800 transition-colors"
-          >
+          <button type="button" onClick={handleCancel} className="btn btn-ghost">
             Cancelar
           </button>
         </div>
