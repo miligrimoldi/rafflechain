@@ -8,22 +8,16 @@ export default function WalletButton() {
 
   if (!isConnected) {
     return (
-      <button
-        onClick={connect}
-        className="text-sm bg-indigo-600 text-white px-4 py-1.5 rounded-lg hover:bg-indigo-700 transition-colors"
-      >
-        Conectar wallet
+      <button onClick={connect} className="btn btn-primary btn-sm btn-glow-ring">
+        Conectar
       </button>
     );
   }
 
   if (isWrongNetwork) {
     return (
-      <button
-        onClick={switchToSepolia}
-        className="text-sm bg-amber-500 text-white px-4 py-1.5 rounded-lg hover:bg-amber-600 transition-colors"
-      >
-        Red incorrecta · Cambiar a Sepolia
+      <button onClick={switchToSepolia} className="btn btn-warning btn-sm">
+        Cambiar a Sepolia
       </button>
     );
   }
@@ -31,14 +25,12 @@ export default function WalletButton() {
   const short = `${address!.slice(0, 6)}…${address!.slice(-4)}`;
   return (
     <div className="flex items-center gap-2">
-      <span className="text-sm font-mono text-gray-700 bg-gray-100 px-3 py-1.5 rounded-lg">
-        {short}
-      </span>
+      <span className="wallet-chip">{short}</span>
       <button
         onClick={disconnect}
-        className="text-xs text-gray-500 hover:text-gray-700 underline"
+        className="text-xs font-semibold text-dim hover:text-muted px-2 py-1 rounded-lg hover:bg-white/5 transition-colors"
       >
-        Desconectar
+        Salir
       </button>
     </div>
   );

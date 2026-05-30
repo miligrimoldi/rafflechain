@@ -19,11 +19,7 @@ export default function NavLinks() {
           <Link
             key={href}
             href={href}
-            className={`text-sm px-3 py-1.5 transition-colors border-b-2 ${
-              active
-                ? "text-indigo-600 font-medium border-indigo-600"
-                : "text-gray-600 hover:text-gray-900 border-transparent"
-            }`}
+            className={active ? "nav-pill nav-pill-active" : "nav-pill"}
           >
             {label}
           </Link>
