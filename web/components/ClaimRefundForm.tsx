@@ -71,33 +71,27 @@ export default function ClaimRefundForm({ raffleIdOnChain }: Props) {
   }
 
   return (
-    <div className="mt-6 bg-red-50 border border-red-200 rounded-xl p-5">
-      <h2 className="text-xs font-semibold uppercase tracking-wider text-red-400 mb-1">
+    <div className="panel-danger">
+      <h2 className="panel-title panel-title-danger mb-1">
         Rifa cancelada — reembolso disponible
       </h2>
-      <p className="text-sm text-red-700 mb-4">
+      <p className="text-sm text-muted mb-4 leading-relaxed">
         Si compraste un ticket, podés reclamar tu{" "}
-        <span className="font-medium">{ethers.formatEther(raffle.ticketPrice)} ETH</span>{" "}
-        de vuelta.
+        <span className="font-bold">{ethers.formatEther(raffle.ticketPrice)} ETH</span> de vuelta.
       </p>
 
       {!isConnected ? (
-        <button
-          onClick={connect}
-          className="w-full bg-red-600 text-white py-2.5 rounded-lg font-medium hover:bg-red-700 transition-colors"
-        >
+        <button onClick={connect} className="btn btn-danger btn-full">
           Conectar wallet para reclamar
         </button>
       ) : isWrongNetwork ? (
-        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 px-4 py-3 rounded-lg">
-          Cambiá a la red Sepolia para continuar.
-        </p>
+        <p className="alert-warning">Cambiá a la red Sepolia para continuar.</p>
       ) : (
         <form onSubmit={handleClaim} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="form-label" style={{ color: "var(--text-muted)" }}>
               Número de ticket{" "}
-              <span className="text-gray-400 font-normal">(1 – {String(raffle.maxTickets)})</span>
+              <span className="text-slate-400 font-normal">(1 – {String(raffle.maxTickets)})</span>
             </label>
             <input
               type="number"
@@ -106,36 +100,28 @@ export default function ClaimRefundForm({ raffleIdOnChain }: Props) {
               value={ticketNumber}
               onChange={(e) => setTicketNumber(e.target.value)}
               required
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+              className="input-field focus:ring-red-200 focus:border-red-400"
               placeholder="ej. 7"
             />
           </div>
 
-          {error && (
-            <p className="text-sm text-red-700 bg-red-100 border border-red-200 px-3 py-2 rounded-lg">
-              {error}
-            </p>
-          )}
+          {error && <p className="alert-error">{error}</p>}
 
           {txHash && (
-            <p className="text-sm text-green-700 bg-green-50 border border-green-200 px-3 py-2 rounded-lg">
+            <p className="alert-success">
               ¡Reembolso procesado!{" "}
               <a
                 href={`https://sepolia.etherscan.io/tx/${txHash}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="underline"
+                className="font-semibold underline underline-offset-2"
               >
                 Ver en Etherscan
               </a>
             </p>
           )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-red-600 text-white py-2.5 rounded-lg font-medium hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
+          <button type="submit" disabled={loading} className="btn btn-danger btn-full">
             {loading ? "Procesando…" : "Reclamar reembolso"}
           </button>
         </form>

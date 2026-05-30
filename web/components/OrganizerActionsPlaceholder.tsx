@@ -35,31 +35,27 @@ export default function OrganizerActionsPlaceholder({
   raffleIdOnChain: number;
 }) {
   return (
-    <div className="border border-dashed border-amber-300 bg-amber-50 rounded-xl p-5 mt-4">
-      <span className="inline-block text-xs font-medium text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full mb-3">
-        🔗 Pendiente · integración blockchain
-      </span>
-      <p className="text-xs font-semibold text-amber-700 uppercase tracking-wider mb-3">
+    <div className="panel panel-placeholder">
+      <span className="badge badge-pending mb-3">🔗 Pendiente · integración blockchain</span>
+      <p className="form-section-title mb-3" style={{ color: "var(--gold)" }}>
         Acciones del organizador / ganador
       </p>
       <ul className="space-y-2">
         {ACTIONS.map(({ label, fn, note, temporary }) => (
           <li
             key={fn}
-            className="bg-white rounded-lg p-3 border border-amber-200"
+            className="rounded-xl p-3 border border-[var(--border)] bg-black/20 transition-all hover:border-[rgb(34,211,238,0.3)]"
           >
             <div className="flex items-center gap-2 mb-0.5">
-              <p className="text-xs font-medium text-gray-700">{label}</p>
+              <p className="text-xs font-semibold text-[var(--text)]">{label}</p>
               {temporary && (
-                <span className="text-xs text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded font-medium">
-                  temporal
-                </span>
+                <span className="badge badge-drawing">temporal</span>
               )}
             </div>
-            <p className="text-xs font-mono text-indigo-600">
+            <p className="text-xs font-mono" style={{ color: "var(--cyan)" }}>
               {fn.replace("raffleId", String(raffleIdOnChain))}
             </p>
-            <p className="text-xs text-gray-400 mt-0.5">{note}</p>
+            <p className="text-xs text-dim mt-0.5">{note}</p>
           </li>
         ))}
       </ul>

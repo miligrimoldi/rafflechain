@@ -131,10 +131,8 @@ export default function OrganizerActions({ raffleIdOnChain }: Props) {
   }
 
   return (
-    <div className="mt-6 bg-white border border-gray-200 rounded-xl p-5">
-      <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4">
-        Acciones
-      </h2>
+    <div className="panel">
+      <h2 className="panel-title">Acciones</h2>
 
       <div className="space-y-2">
         {canRequestWinner && (
@@ -183,19 +181,15 @@ export default function OrganizerActions({ raffleIdOnChain }: Props) {
         )}
       </div>
 
-      {error && (
-        <p className="mt-3 text-sm text-red-700 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">
-          {error}
-        </p>
-      )}
+      {error && <p className="mt-3 alert-error">{error}</p>}
       {txHash && (
-        <p className="mt-3 text-sm text-green-700 bg-green-50 border border-green-200 px-3 py-2 rounded-lg">
+        <p className="mt-3 alert-success">
           Transacción confirmada.{" "}
           <a
             href={`https://sepolia.etherscan.io/tx/${txHash}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="underline"
+            className="font-semibold underline underline-offset-2"
           >
             Ver en Etherscan
           </a>
@@ -216,12 +210,10 @@ function ActionButton({
   onClick: () => void;
   variant?: "default" | "danger";
 }) {
-  const base =
-    "w-full text-left rounded-lg px-4 py-3 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors";
   const styles =
     variant === "danger"
-      ? `${base} bg-red-50 border border-red-200 text-red-700 hover:bg-red-100`
-      : `${base} bg-gray-50 border border-gray-200 text-gray-800 hover:bg-gray-100`;
+      ? "action-btn action-btn-danger disabled:opacity-50 disabled:cursor-not-allowed"
+      : "action-btn action-btn-default disabled:opacity-50 disabled:cursor-not-allowed";
 
   return (
     <button onClick={onClick} disabled={loading} className={styles}>

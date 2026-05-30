@@ -34,17 +34,15 @@ export default function OnChainRaffleInfo({ raffleIdOnChain }: Props) {
   }, [raffleIdOnChain]);
 
   if (error) {
-    return (
-      <div className="mt-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-        {error}
-      </div>
-    );
+    return <div className="alert-error mt-6">{error}</div>;
   }
 
   if (!raffle) {
     return (
-      <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-400 animate-pulse">
-        Cargando datos on-chain…
+      <div className="panel-accent flex items-center justify-center min-h-[8rem]">
+        <p className="text-sm text-indigo-400 font-medium animate-pulse">
+          Cargando datos on-chain…
+        </p>
       </div>
     );
   }
@@ -58,11 +56,9 @@ export default function OnChainRaffleInfo({ raffleIdOnChain }: Props) {
   const isZeroWinner = raffle.winner === ethers.ZeroAddress;
 
   return (
-    <div className="mt-6 bg-indigo-50 border border-indigo-100 rounded-xl p-5">
-      <h2 className="text-xs font-semibold uppercase tracking-wider text-indigo-400 mb-4">
-        Datos on-chain
-      </h2>
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+    <div className="panel-accent">
+      <h2 className="panel-title panel-title-accent">Datos on-chain</h2>
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
         <Row label="Estado" value={statusLabel} />
         <Row label="Terminó" value={ended ? "Sí" : "No"} />
         <Row label="Precio del ticket" value={`${ticketPrice} ETH`} />
@@ -85,7 +81,7 @@ export default function OnChainRaffleInfo({ raffleIdOnChain }: Props) {
         )}
       </dl>
       {Number(raffle.status) === 3 && (
-        <p className="mt-4 text-sm text-red-600 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">
+        <p className="mt-4 alert-warning">
           Esta rifa fue cancelada. Los compradores de tickets pueden reclamar su reembolso abajo.
         </p>
       )}
@@ -96,8 +92,8 @@ export default function OnChainRaffleInfo({ raffleIdOnChain }: Props) {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <>
-      <dt className="text-gray-500">{label}</dt>
-      <dd className="font-medium text-gray-900">{value}</dd>
+      <dt className="text-dim">{label}</dt>
+      <dd className="font-semibold text-[var(--text)]">{value}</dd>
     </>
   );
 }

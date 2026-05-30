@@ -11,20 +11,18 @@ export default function BuyTicketsPlaceholder({
   raffleIdOnChain: number;
 }) {
   return (
-    <div className="border border-dashed border-amber-300 bg-amber-50 rounded-xl p-5 mt-4">
-      <span className="inline-block text-xs font-medium text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full mb-3">
-        🔗 Pendiente · integración blockchain
-      </span>
-      <p className="text-xs font-semibold text-amber-700 uppercase tracking-wider mb-2">
+    <div className="panel panel-placeholder">
+      <span className="badge badge-pending mb-3">🔗 Pendiente · integración blockchain</span>
+      <p className="form-section-title mb-2" style={{ color: "var(--gold)" }}>
         Comprar tickets
       </p>
-      <p className="text-xs text-gray-600 leading-relaxed">
+      <p className="text-xs text-muted leading-relaxed">
         Llamará a{" "}
-        <code className="font-mono text-indigo-600 bg-white px-1 py-0.5 rounded border border-indigo-100">
+        <code className="font-mono text-xs px-1.5 py-0.5 rounded-md border border-[var(--border)] bg-black/30" style={{ color: "var(--cyan)" }}>
           buyTickets({raffleIdOnChain}, quantity)
         </code>{" "}
         en el contrato. Requiere firma de MetaMask y envío de ETH por{" "}
-        <code className="font-mono text-indigo-600 bg-white px-1 py-0.5 rounded border border-indigo-100">
+        <code className="font-mono text-xs px-1.5 py-0.5 rounded-md border border-[var(--border)] bg-black/30" style={{ color: "var(--cyan)" }}>
           ticketPrice × quantity
         </code>
         .

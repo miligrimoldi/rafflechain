@@ -80,28 +80,21 @@ export default function BuyTicketsForm({ raffleIdOnChain }: Props) {
   }
 
   return (
-    <div className="mt-6 bg-white border border-gray-200 rounded-xl p-5">
-      <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4">
-        Comprar ticket
-      </h2>
+    <div className="panel">
+      <h2 className="panel-title">Comprar ticket</h2>
 
       {!isConnected ? (
-        <button
-          onClick={connect}
-          className="w-full bg-indigo-600 text-white py-2.5 rounded-lg font-medium hover:bg-indigo-700 transition-colors"
-        >
+        <button onClick={connect} className="btn btn-primary btn-full btn-glow-ring">
           Conectar wallet para comprar
         </button>
       ) : isWrongNetwork ? (
-        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 px-4 py-3 rounded-lg">
-          Cambiá a la red Sepolia para continuar.
-        </p>
+        <p className="alert-warning">Cambiá a la red Sepolia para continuar.</p>
       ) : (
         <form onSubmit={handleBuy} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="form-label">
               Número de ticket{" "}
-              <span className="text-gray-400 font-normal">
+              <span className="text-slate-400 font-normal">
                 (1 – {String(raffle.maxTickets)})
               </span>
             </label>
@@ -112,43 +105,35 @@ export default function BuyTicketsForm({ raffleIdOnChain }: Props) {
               value={ticketNumber}
               onChange={(e) => setTicketNumber(e.target.value)}
               required
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="input-field"
               placeholder="ej. 42"
             />
           </div>
 
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-slate-500">
             Precio:{" "}
-            <span className="font-medium text-gray-900">
+            <span className="font-bold text-accent">
               {ethers.formatEther(raffle.ticketPrice)} ETH
             </span>
           </p>
 
-          {error && (
-            <p className="text-sm text-red-700 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">
-              {error}
-            </p>
-          )}
+          {error && <p className="alert-error">{error}</p>}
 
           {txHash && (
-            <p className="text-sm text-green-700 bg-green-50 border border-green-200 px-3 py-2 rounded-lg">
+            <p className="alert-success">
               ¡Ticket comprado!{" "}
               <a
                 href={`https://sepolia.etherscan.io/tx/${txHash}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="underline"
+                className="font-semibold underline underline-offset-2"
               >
                 Ver en Etherscan
               </a>
             </p>
           )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-indigo-600 text-white py-2.5 rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
+          <button type="submit" disabled={loading} className="btn btn-primary btn-full btn-glow-ring">
             {loading ? "Comprando…" : "Comprar ticket"}
           </button>
         </form>
