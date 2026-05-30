@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <defs>
+    <linearGradient id="rc-bg" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#141422"/>
+      <stop offset="1" stop-color="#0a0a12"/>
+    </linearGradient>
+    <linearGradient id="rc-ticket" x1="6" y1="8" x2="26" y2="24" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#22d3ee"/>
+      <stop offset="0.5" stop-color="#e879f9"/>
+      <stop offset="1" stop-color="#fbbf24"/>
+    </linearGradient>
+    <linearGradient id="rc-shine" x1="10" y1="6" x2="22" y2="18" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffffff" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="8" fill="url(#rc-bg)"/>
+  <rect x="0.5" y="0.5" width="31" height="31" rx="7.5" stroke="#22d3ee" stroke-opacity="0.25"/>
+  <!-- ticket body -->
+  <path
+    d="M8 9.5h16a1.5 1.5 0 0 1 1.5 1.5v2.2a2.2 2.2 0 0 0 0 4.4v2.2a1.5 1.5 0 0 1-1.5 1.5H8a1.5 1.5 0 0 1-1.5-1.5v-2.2a2.2 2.2 0 0 0 0-4.4v-2.2A1.5 1.5 0 0 1 8 9.5z"
+    fill="url(#rc-ticket)"
+  />
+  <!-- side notches -->
+  <circle cx="6.25" cy="16" r="1.35" fill="#0a0a12"/>
+  <circle cx="25.75" cy="16" r="1.35" fill="#0a0a12"/>
+  <!-- perforation -->
+  <path d="M15.25 11.5v9" stroke="#0a0a12" stroke-width="1.2" stroke-dasharray="1.2 1.6" stroke-linecap="round"/>
+  <!-- shine -->
+  <path
+    d="M10.5 12.5h5.5a1 1 0 0 1 1 1v1.5a1 1 0 0 1-1 1h-5.5z"
+    fill="url(#rc-shine)"
+  />
+  <!-- chain link hint -->
+  <circle cx="20.5" cy="13.5" r="1.1" fill="#0a0a12" fill-opacity="0.55"/>
+  <circle cx="20.5" cy="18.5" r="1.1" fill="#0a0a12" fill-opacity="0.55"/>
+</svg>
