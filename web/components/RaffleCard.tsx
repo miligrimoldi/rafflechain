@@ -1,5 +1,6 @@
 import Link from "next/link";
-import type { RaffleMetadata } from "@prisma/client";
+import type { prisma } from "@/lib/prisma";
+type RaffleMetadata = Awaited<ReturnType<typeof prisma.raffleMetadata.findUnique>> & object;
 import RaffleStatusBadge from "./RaffleStatusBadge";
 
 export default function RaffleCard({ raffle }: { raffle: RaffleMetadata }) {
