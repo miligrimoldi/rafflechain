@@ -87,7 +87,7 @@ body {
   font-family: var(--font-body), system-ui, sans-serif;
 }
 
-/* ─── Ambient backdrop ─── */
+/* Fondo animado */
 .page-backdrop {
   position: fixed;
   inset: 0;
@@ -157,7 +157,7 @@ body {
   flex-direction: column;
 }
 
-/* ─── Header ─── */
+/* Encabezado */
 .header-glass {
   background: rgb(10 10 18 / 0.65);
   backdrop-filter: blur(20px) saturate(1.4);
@@ -202,7 +202,7 @@ body {
   animation: gradient-shift 6s ease infinite;
 }
 
-/* ─── Pages ─── */
+/* Páginas */
 .page-main {
   flex: 1;
   position: relative;
@@ -354,7 +354,7 @@ body {
   margin-bottom: 0.75rem;
 }
 
-/* ─── Ticket cards ─── */
+/* Tarjetas de ticket */
 .ticket-card {
   position: relative;
   display: block;
@@ -455,7 +455,7 @@ body {
   color: var(--cyan);
 }
 
-/* Generic cards */
+/* Tarjetas genéricas */
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -491,7 +491,7 @@ body {
   box-shadow: var(--shadow-neon-cyan), var(--shadow-card);
 }
 
-/* ─── Buttons ─── */
+/* Botones */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -657,7 +657,7 @@ body {
   opacity: 0.85;
 }
 
-/* ─── Forms ─── */
+/* Formularios */
 .input-field {
   width: 100%;
   border: 1px solid var(--border);
@@ -699,7 +699,7 @@ body {
   color: var(--magenta);
 }
 
-/* ─── Alerts ─── */
+/* Alertas */
 .alert-error {
   padding: 0.875rem 1rem;
   border-radius: 0.875rem;
@@ -736,7 +736,7 @@ body {
   color: #fde68a;
 }
 
-/* ─── Panels ─── */
+/* Paneles */
 .panel {
   margin-top: 1.5rem;
   padding: 1.35rem 1.5rem;
@@ -778,7 +778,7 @@ body {
 .panel-title-accent { color: var(--cyan); }
 .panel-title-danger { color: var(--danger); }
 
-/* ─── Badges ─── */
+/* Badges */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -833,7 +833,7 @@ body {
   border-radius: 0.5rem;
 }
 
-/* ─── Nav pills ─── */
+/* Navegación */
 .nav-pill {
   font-size: 0.8125rem;
   font-weight: 600;
@@ -855,7 +855,7 @@ body {
   box-shadow: 0 0 20px rgb(34 211 238 / 0.15);
 }
 
-/* ─── Wallet chip ─── */
+/* Chip de wallet */
 .wallet-chip {
   font-family: var(--font-mono), monospace;
   font-size: 0.8125rem;
@@ -868,7 +868,7 @@ body {
   box-shadow: 0 0 16px rgb(34 211 238 / 0.1);
 }
 
-/* ─── Empty / skeleton ─── */
+/* Estado vacío y skeleton */
 .empty-state {
   text-align: center;
   padding: 4rem 2rem;
@@ -911,7 +911,7 @@ body {
 .stagger-children > *:nth-child(8) { animation-delay: 0.48s; }
 .stagger-children > *:nth-child(9) { animation-delay: 0.54s; }
 
-/* ─── Action buttons ─── */
+/* Botones de acción */
 .action-btn {
   width: 100%;
   text-align: left;
@@ -950,7 +950,7 @@ body {
   box-shadow: 0 0 20px rgb(251 113 133 / 0.15);
 }
 
-/* ─── Detail sections ─── */
+/* Secciones de detalle */
 .detail-section h2 {
   font-family: var(--font-display), sans-serif;
   font-size: 0.6875rem;
@@ -1014,7 +1014,7 @@ body {
   pointer-events: none;
 }
 
-/* ─── Footer ─── */
+/* Footer */
 .site-footer {
   margin-top: auto;
   border-top: 1px solid var(--border);
@@ -1052,7 +1052,7 @@ body {
   color: var(--text-dim);
 }
 
-/* ─── Section label for grid ─── */
+/* Etiqueta de sección */
 .section-label {
   font-family: var(--font-display), sans-serif;
   font-size: 1.125rem;
@@ -1071,7 +1071,7 @@ body {
   background: linear-gradient(90deg, var(--border), transparent);
 }
 
-/* List row card */
+/* Fila de lista */
 .list-row-card {
   display: flex;
   align-items: center;
@@ -1103,7 +1103,7 @@ body {
   margin-top: 0.25rem;
 }
 
-/* Placeholder panels */
+/* Paneles placeholder */
 .panel-placeholder {
   border-style: dashed;
   border-color: rgb(251 191 36 / 0.35);
