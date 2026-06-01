@@ -45,6 +45,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     if (accounts.length === 0) {
       setAddress(null);
       setSigner(null);
+      setChainId(null);
       return;
     }
     const network = await provider.getNetwork();
@@ -58,7 +59,15 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     if (!window.ethereum) return;
     updateSigner();
 
-    const handleAccountsChanged = () => updateSigner();
+    const handleAccountsChanged = (accounts: unknown) => {
+      if ((accounts as string[]).length === 0) {
+        setAddress(null);
+        setSigner(null);
+        setChainId(null);
+      } else {
+        updateSigner();
+      }
+    };
     const handleChainChanged = () => updateSigner();
 
     window.ethereum.on("accountsChanged", handleAccountsChanged);

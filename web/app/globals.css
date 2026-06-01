@@ -666,6 +666,7 @@ body {
   font-size: 0.9375rem;
   background: rgb(0 0 0 / 0.35);
   color: var(--text);
+  color-scheme: dark;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
@@ -678,6 +679,23 @@ body {
   border-color: rgb(34 211 238 / 0.6);
   background: rgb(0 0 0 / 0.5);
   box-shadow: 0 0 0 3px rgb(34 211 238 / 0.15), 0 0 24px rgb(34 211 238 / 0.1);
+}
+
+.input-field:-webkit-autofill,
+.input-field:-webkit-autofill:hover,
+.input-field:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #0d0d1a inset;
+  -webkit-text-fill-color: var(--text);
+  caret-color: var(--text);
+}
+
+.input-field::-webkit-calendar-picker-indicator {
+  opacity: 0.45;
+  cursor: pointer;
+}
+
+.input-field::-webkit-calendar-picker-indicator:hover {
+  opacity: 0.8;
 }
 
 .form-label {
