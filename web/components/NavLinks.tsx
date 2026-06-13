@@ -6,10 +6,11 @@ import { usePathname } from "next/navigation";
 export default function NavLinks() {
   const pathname = usePathname();
 
-  const links = [
-    { href: "/", label: "Explorar" },
-    { href: "/my-raffles", label: "Mis rifas" },
-  ];
+    const links = [
+        { href: "/", label: "Explorar" },
+        { href: "/my-raffles", label: "Mis rifas" },
+        { href: "/my-tickets", label: "Mis tickets" },
+    ];
 
   return (
     <nav className="flex items-center gap-1">
