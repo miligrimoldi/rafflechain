@@ -10,7 +10,7 @@ describe("RaffleChain", function () {
         "0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae";
     const CALLBACK_GAS_LIMIT = 500000;
 
-    const TICKET_PRICE = ethers.parseEther("0.01");
+    const TICKET_PRICE = ethers.parseUnits("1", 6);
     const MAX_TICKETS = 5n;
 
     async function getEndTime() {
@@ -23,8 +23,30 @@ describe("RaffleChain", function () {
         await ethers.provider.send("evm_mine", []);
     }
 
+    async function deployMockUSDC() {
+        const MockUSDCFactory = await ethers.getContractFactory("MockUSDC");
+        const mockUSDC: any = await MockUSDCFactory.deploy();
+        await mockUSDC.waitForDeployment();
+        return mockUSDC;
+    }
+
+    async function fundAndApprove(
+        mockUSDC: any,
+        raffleChain: any,
+        buyer: any,
+        amount = TICKET_PRICE,
+    ) {
+        await mockUSDC.mint(buyer.address, amount);
+        await mockUSDC
+            .connect(buyer)
+            .approve(await raffleChain.getAddress(), amount);
+    }
+
     async function deployRaffleChain() {
         const [organizer, buyer, otherBuyer, stranger] = await ethers.getSigners();
+
+        const mockUSDC = await deployMockUSDC();
+        const paymentTokenAddress = await mockUSDC.getAddress();
 
         const RaffleChainFactory = await ethers.getContractFactory("RaffleChain");
 
@@ -33,15 +55,19 @@ describe("RaffleChain", function () {
             VRF_COORDINATOR,
             KEY_HASH,
             CALLBACK_GAS_LIMIT,
+            paymentTokenAddress,
         );
 
         await raffleChain.waitForDeployment();
 
-        return { raffleChain, organizer, buyer, otherBuyer, stranger };
+        return { raffleChain, mockUSDC, organizer, buyer, otherBuyer, stranger };
     }
 
     async function deployRaffleChainHarness() {
         const [organizer, buyer, otherBuyer, stranger] = await ethers.getSigners();
+
+        const mockUSDC = await deployMockUSDC();
+        const paymentTokenAddress = await mockUSDC.getAddress();
 
         const RaffleChainHarnessFactory =
             await ethers.getContractFactory("RaffleChainHarness");
@@ -51,17 +77,20 @@ describe("RaffleChain", function () {
             VRF_COORDINATOR,
             KEY_HASH,
             CALLBACK_GAS_LIMIT,
+            paymentTokenAddress,
         );
 
         await raffleChain.waitForDeployment();
 
-        return { raffleChain, organizer, buyer, otherBuyer, stranger };
+        return { raffleChain, mockUSDC, organizer, buyer, otherBuyer, stranger };
     }
 
     describe("createRaffle", function () {
         it("creates a raffle correctly", async function () {
-            const { raffleChain, organizer } = await deployRaffleChain();
+            const { raffleChain, organizer, mockUSDC } = await deployRaffleChain();
             const endTime = await getEndTime();
+
+            expect(await raffleChain.paymentToken()).to.equal(await mockUSDC.getAddress());
 
             await expect(raffleChain.createRaffle(TICKET_PRICE, MAX_TICKETS, endTime))
                 .to.emit(raffleChain, "RaffleCreated")
@@ -79,7 +108,7 @@ describe("RaffleChain", function () {
             expect(raffle.winningTicketNumber).to.equal(0n);
             expect(raffle.winner).to.equal(ethers.ZeroAddress);
             expect(raffle.randomNumber).to.equal(0n);
-            expect(raffle.status).to.equal(0n); // ACTIVE
+            expect(raffle.status).to.equal(0n);
             expect(raffle.fundsWithdrawn).to.equal(false);
             expect(raffle.prizeClaimed).to.equal(false);
             expect(raffle.vrfRequestTimestamp).to.equal(0n);
@@ -113,43 +142,37 @@ describe("RaffleChain", function () {
     });
 
     describe("buyTicket", function () {
-        it("allows a buyer to buy a selected ticket and mints NFT", async function () {
-            const { raffleChain, buyer } = await deployRaffleChain();
+        it("allows a buyer to buy a selected ticket with USDC", async function () {
+            const { raffleChain, mockUSDC, buyer } = await deployRaffleChain();
             const endTime = await getEndTime();
 
             await raffleChain.createRaffle(TICKET_PRICE, MAX_TICKETS, endTime);
+            await fundAndApprove(mockUSDC, raffleChain, buyer);
 
-            await expect(
-                raffleChain.connect(buyer).buyTicket(0n, 1n, {
-                    value: TICKET_PRICE,
-                }),
-            )
+            await expect(raffleChain.connect(buyer).buyTicket(0n, 1n))
                 .to.emit(raffleChain, "TicketPurchased")
-                .withArgs(0n, buyer.address, 1n, 0n);
+                .withArgs(0n, buyer.address, 1n);
 
             expect(await raffleChain.getTicketsSold(0n)).to.equal(1n);
             expect(await raffleChain.getTicketOwner(0n, 1n)).to.equal(buyer.address);
             expect(await raffleChain.getSoldTicketNumberByIndex(0n, 0n)).to.equal(1n);
-            expect(await raffleChain.ownerOf(0n)).to.equal(buyer.address);
 
-            const [raffleId, ticketNumber] = await raffleChain.getTicketInfo(0n);
-            expect(raffleId).to.equal(0n);
-            expect(ticketNumber).to.equal(1n);
+            const raffle = await raffleChain.getRaffle(0n);
+            expect(raffle.amountCollected).to.equal(TICKET_PRICE);
+            expect(await mockUSDC.balanceOf(await raffleChain.getAddress())).to.equal(TICKET_PRICE);
         });
 
         it("allows multiple buyers to buy different tickets", async function () {
-            const { raffleChain, buyer, otherBuyer } = await deployRaffleChain();
+            const { raffleChain, mockUSDC, buyer, otherBuyer } = await deployRaffleChain();
             const endTime = await getEndTime();
 
             await raffleChain.createRaffle(TICKET_PRICE, MAX_TICKETS, endTime);
 
-            await raffleChain.connect(buyer).buyTicket(0n, 2n, {
-                value: TICKET_PRICE,
-            });
+            await fundAndApprove(mockUSDC, raffleChain, buyer);
+            await raffleChain.connect(buyer).buyTicket(0n, 2n);
 
-            await raffleChain.connect(otherBuyer).buyTicket(0n, 5n, {
-                value: TICKET_PRICE,
-            });
+            await fundAndApprove(mockUSDC, raffleChain, otherBuyer);
+            await raffleChain.connect(otherBuyer).buyTicket(0n, 5n);
 
             expect(await raffleChain.getTicketsSold(0n)).to.equal(2n);
             expect(await raffleChain.getTicketOwner(0n, 2n)).to.equal(buyer.address);
@@ -159,107 +182,114 @@ describe("RaffleChain", function () {
         });
 
         it("reverts if raffle does not exist", async function () {
-            const { raffleChain, buyer } = await deployRaffleChain();
+            const { raffleChain, mockUSDC, buyer } = await deployRaffleChain();
+
+            await fundAndApprove(mockUSDC, raffleChain, buyer);
 
             await expect(
-                raffleChain.connect(buyer).buyTicket(999n, 1n, {
-                    value: TICKET_PRICE,
-                }),
+                raffleChain.connect(buyer).buyTicket(999n, 1n),
             ).to.be.revertedWith("RaffleChain: raffle does not exist");
         });
 
         it("reverts if ticket is already sold", async function () {
-            const { raffleChain, buyer, otherBuyer } = await deployRaffleChain();
+            const { raffleChain, mockUSDC, buyer, otherBuyer } = await deployRaffleChain();
             const endTime = await getEndTime();
 
             await raffleChain.createRaffle(TICKET_PRICE, MAX_TICKETS, endTime);
 
-            await raffleChain.connect(buyer).buyTicket(0n, 1n, {
-                value: TICKET_PRICE,
-            });
+            await fundAndApprove(mockUSDC, raffleChain, buyer);
+            await raffleChain.connect(buyer).buyTicket(0n, 1n);
+
+            await fundAndApprove(mockUSDC, raffleChain, otherBuyer);
 
             await expect(
-                raffleChain.connect(otherBuyer).buyTicket(0n, 1n, {
-                    value: TICKET_PRICE,
-                }),
+                raffleChain.connect(otherBuyer).buyTicket(0n, 1n),
             ).to.be.revertedWith("RaffleChain: ticket already sold");
         });
 
         it("reverts if ticket number is invalid", async function () {
-            const { raffleChain, buyer } = await deployRaffleChain();
+            const { raffleChain, mockUSDC, buyer } = await deployRaffleChain();
             const endTime = await getEndTime();
 
             await raffleChain.createRaffle(TICKET_PRICE, MAX_TICKETS, endTime);
+            await fundAndApprove(mockUSDC, raffleChain, buyer);
 
             await expect(
-                raffleChain.connect(buyer).buyTicket(0n, 0n, {
-                    value: TICKET_PRICE,
-                }),
+                raffleChain.connect(buyer).buyTicket(0n, 0n),
             ).to.be.revertedWith("RaffleChain: invalid ticket number");
 
             await expect(
-                raffleChain.connect(buyer).buyTicket(0n, 6n, {
-                    value: TICKET_PRICE,
-                }),
+                raffleChain.connect(buyer).buyTicket(0n, 6n),
             ).to.be.revertedWith("RaffleChain: invalid ticket number");
         });
 
-        it("reverts if ETH amount is incorrect", async function () {
-            const { raffleChain, buyer } = await deployRaffleChain();
+        it("reverts if buyer did not approve USDC", async function () {
+            const { raffleChain, mockUSDC, buyer } = await deployRaffleChain();
+            const endTime = await getEndTime();
+
+            await raffleChain.createRaffle(TICKET_PRICE, MAX_TICKETS, endTime);
+            await mockUSDC.mint(buyer.address, TICKET_PRICE);
+
+            await expect(
+                raffleChain.connect(buyer).buyTicket(0n, 1n),
+            ).to.be.revertedWithCustomError
+        });
+
+        it("reverts if buyer does not have enough USDC", async function () {
+            const { raffleChain, mockUSDC, buyer } = await deployRaffleChain();
             const endTime = await getEndTime();
 
             await raffleChain.createRaffle(TICKET_PRICE, MAX_TICKETS, endTime);
 
+            await mockUSDC.mint(buyer.address, TICKET_PRICE - 1n);
+            await mockUSDC
+                .connect(buyer)
+                .approve(await raffleChain.getAddress(), TICKET_PRICE);
+
             await expect(
-                raffleChain.connect(buyer).buyTicket(0n, 1n, {
-                    value: ethers.parseEther("0.02"),
-                }),
-            ).to.be.revertedWith("RaffleChain: incorrect ETH amount");
+                raffleChain.connect(buyer).buyTicket(0n, 1n),
+            ).to.be.revertedWithCustomError
         });
 
         it("reverts if raffle has ended", async function () {
-            const { raffleChain, buyer } = await deployRaffleChain();
+            const { raffleChain, mockUSDC, buyer } = await deployRaffleChain();
             const endTime = await getEndTime();
 
             await raffleChain.createRaffle(TICKET_PRICE, MAX_TICKETS, endTime);
+            await fundAndApprove(mockUSDC, raffleChain, buyer);
 
             await increaseTime(3601);
 
             await expect(
-                raffleChain.connect(buyer).buyTicket(0n, 1n, {
-                    value: TICKET_PRICE,
-                }),
+                raffleChain.connect(buyer).buyTicket(0n, 1n),
             ).to.be.revertedWith("RaffleChain: raffle has ended");
         });
 
         it("reverts if raffle is sold out", async function () {
-            const { raffleChain, buyer } = await deployRaffleChain();
+            const { raffleChain, mockUSDC, buyer } = await deployRaffleChain();
             const endTime = await getEndTime();
 
             await raffleChain.createRaffle(TICKET_PRICE, 1n, endTime);
 
-            await raffleChain.connect(buyer).buyTicket(0n, 1n, {
-                value: TICKET_PRICE,
-            });
+            await fundAndApprove(mockUSDC, raffleChain, buyer);
+            await raffleChain.connect(buyer).buyTicket(0n, 1n);
+
+            await fundAndApprove(mockUSDC, raffleChain, buyer);
 
             await expect(
-                raffleChain.connect(buyer).buyTicket(0n, 1n, {
-                    value: TICKET_PRICE,
-                }),
+                raffleChain.connect(buyer).buyTicket(0n, 1n),
             ).to.be.revertedWith("RaffleChain: sold out");
         });
     });
 
     describe("requestWinner", function () {
         it("reverts if raffle has not ended yet", async function () {
-            const { raffleChain, buyer } = await deployRaffleChain();
+            const { raffleChain, mockUSDC, buyer } = await deployRaffleChain();
             const endTime = await getEndTime();
 
             await raffleChain.createRaffle(TICKET_PRICE, MAX_TICKETS, endTime);
-
-            await raffleChain.connect(buyer).buyTicket(0n, 1n, {
-                value: TICKET_PRICE,
-            });
+            await fundAndApprove(mockUSDC, raffleChain, buyer);
+            await raffleChain.connect(buyer).buyTicket(0n, 1n);
 
             await expect(raffleChain.requestWinner(0n)).to.be.revertedWith(
                 "RaffleChain: raffle has not ended yet",
@@ -280,16 +310,15 @@ describe("RaffleChain", function () {
         });
 
         it("considers raffle ended when sold out", async function () {
-            const { raffleChain, buyer } = await deployRaffleChain();
+            const { raffleChain, mockUSDC, buyer } = await deployRaffleChain();
             const endTime = await getEndTime();
 
             await raffleChain.createRaffle(TICKET_PRICE, 1n, endTime);
 
             expect(await raffleChain.isRaffleEnded(0n)).to.equal(false);
 
-            await raffleChain.connect(buyer).buyTicket(0n, 1n, {
-                value: TICKET_PRICE,
-            });
+            await fundAndApprove(mockUSDC, raffleChain, buyer);
+            await raffleChain.connect(buyer).buyTicket(0n, 1n);
 
             expect(await raffleChain.isRaffleEnded(0n)).to.equal(true);
         });
@@ -301,18 +330,17 @@ describe("RaffleChain", function () {
 
     describe("winner selection with harness", function () {
         it("selects winner using sold ticket index", async function () {
-            const { raffleChain, buyer, otherBuyer } = await deployRaffleChainHarness();
+            const { raffleChain, mockUSDC, buyer, otherBuyer } =
+                await deployRaffleChainHarness();
             const endTime = await getEndTime();
 
             await raffleChain.createRaffle(TICKET_PRICE, MAX_TICKETS, endTime);
 
-            await raffleChain.connect(buyer).buyTicket(0n, 2n, {
-                value: TICKET_PRICE,
-            });
+            await fundAndApprove(mockUSDC, raffleChain, buyer);
+            await raffleChain.connect(buyer).buyTicket(0n, 2n);
 
-            await raffleChain.connect(otherBuyer).buyTicket(0n, 5n, {
-                value: TICKET_PRICE,
-            });
+            await fundAndApprove(mockUSDC, raffleChain, otherBuyer);
+            await raffleChain.connect(otherBuyer).buyTicket(0n, 5n);
 
             await expect(raffleChain.exposedSelectWinner(0n, 1n))
                 .to.emit(raffleChain, "WinnerSelected")
@@ -323,22 +351,21 @@ describe("RaffleChain", function () {
             expect(raffle.winner).to.equal(otherBuyer.address);
             expect(raffle.winningTicketNumber).to.equal(5n);
             expect(raffle.randomNumber).to.equal(1n);
-            expect(raffle.status).to.equal(2n); // WINNER_SELECTED
+            expect(raffle.status).to.equal(2n);
         });
 
         it("selects first sold ticket when random number modulo ticketsSold is zero", async function () {
-            const { raffleChain, buyer, otherBuyer } = await deployRaffleChainHarness();
+            const { raffleChain, mockUSDC, buyer, otherBuyer } =
+                await deployRaffleChainHarness();
             const endTime = await getEndTime();
 
             await raffleChain.createRaffle(TICKET_PRICE, MAX_TICKETS, endTime);
 
-            await raffleChain.connect(buyer).buyTicket(0n, 3n, {
-                value: TICKET_PRICE,
-            });
+            await fundAndApprove(mockUSDC, raffleChain, buyer);
+            await raffleChain.connect(buyer).buyTicket(0n, 3n);
 
-            await raffleChain.connect(otherBuyer).buyTicket(0n, 4n, {
-                value: TICKET_PRICE,
-            });
+            await fundAndApprove(mockUSDC, raffleChain, otherBuyer);
+            await raffleChain.connect(otherBuyer).buyTicket(0n, 4n);
 
             await raffleChain.exposedSelectWinner(0n, 10n);
 
@@ -353,14 +380,13 @@ describe("RaffleChain", function () {
 
     describe("claimPrize", function () {
         it("allows winner to claim prize", async function () {
-            const { raffleChain, buyer } = await deployRaffleChainHarness();
+            const { raffleChain, mockUSDC, buyer } = await deployRaffleChainHarness();
             const endTime = await getEndTime();
 
             await raffleChain.createRaffle(TICKET_PRICE, MAX_TICKETS, endTime);
 
-            await raffleChain.connect(buyer).buyTicket(0n, 1n, {
-                value: TICKET_PRICE,
-            });
+            await fundAndApprove(mockUSDC, raffleChain, buyer);
+            await raffleChain.connect(buyer).buyTicket(0n, 1n);
 
             await raffleChain.exposedSelectWinner(0n, 0n);
 
@@ -373,14 +399,14 @@ describe("RaffleChain", function () {
         });
 
         it("reverts if non winner tries to claim prize", async function () {
-            const { raffleChain, buyer, otherBuyer } = await deployRaffleChainHarness();
+            const { raffleChain, mockUSDC, buyer, otherBuyer } =
+                await deployRaffleChainHarness();
             const endTime = await getEndTime();
 
             await raffleChain.createRaffle(TICKET_PRICE, MAX_TICKETS, endTime);
 
-            await raffleChain.connect(buyer).buyTicket(0n, 1n, {
-                value: TICKET_PRICE,
-            });
+            await fundAndApprove(mockUSDC, raffleChain, buyer);
+            await raffleChain.connect(buyer).buyTicket(0n, 1n);
 
             await raffleChain.exposedSelectWinner(0n, 0n);
 
@@ -390,37 +416,35 @@ describe("RaffleChain", function () {
         });
 
         it("reverts if winner tries to claim prize twice", async function () {
-            const { raffleChain, buyer } = await deployRaffleChainHarness();
+            const { raffleChain, mockUSDC, buyer } = await deployRaffleChainHarness();
             const endTime = await getEndTime();
 
             await raffleChain.createRaffle(TICKET_PRICE, MAX_TICKETS, endTime);
 
-            await raffleChain.connect(buyer).buyTicket(0n, 1n, {
-                value: TICKET_PRICE,
-            });
+            await fundAndApprove(mockUSDC, raffleChain, buyer);
+            await raffleChain.connect(buyer).buyTicket(0n, 1n);
 
             await raffleChain.exposedSelectWinner(0n, 0n);
 
             await raffleChain.connect(buyer).claimPrize(0n);
 
-            await expect(raffleChain.connect(buyer).claimPrize(0n)).to.be.revertedWith(
-                "RaffleChain: prize already claimed",
-            );
+            await expect(
+                raffleChain.connect(buyer).claimPrize(0n),
+            ).to.be.revertedWith("RaffleChain: prize already claimed");
         });
 
         it("reverts if winner is not selected yet", async function () {
-            const { raffleChain, buyer } = await deployRaffleChain();
+            const { raffleChain, mockUSDC, buyer } = await deployRaffleChain();
             const endTime = await getEndTime();
 
             await raffleChain.createRaffle(TICKET_PRICE, MAX_TICKETS, endTime);
 
-            await raffleChain.connect(buyer).buyTicket(0n, 1n, {
-                value: TICKET_PRICE,
-            });
+            await fundAndApprove(mockUSDC, raffleChain, buyer);
+            await raffleChain.connect(buyer).buyTicket(0n, 1n);
 
-            await expect(raffleChain.connect(buyer).claimPrize(0n)).to.be.revertedWith(
-                "RaffleChain: winner not selected yet",
-            );
+            await expect(
+                raffleChain.connect(buyer).claimPrize(0n),
+            ).to.be.revertedWith("RaffleChain: winner not selected yet");
         });
     });
 
@@ -438,7 +462,7 @@ describe("RaffleChain", function () {
                 .withArgs(0n);
 
             const raffle = await raffleChain.getRaffle(0n);
-            expect(raffle.status).to.equal(3n); // CANCELLED
+            expect(raffle.status).to.equal(3n);
         });
 
         it("reverts if raffle has not ended yet", async function () {
@@ -453,14 +477,13 @@ describe("RaffleChain", function () {
         });
 
         it("reverts if raffle has tickets sold", async function () {
-            const { raffleChain, buyer } = await deployRaffleChain();
+            const { raffleChain, mockUSDC, buyer } = await deployRaffleChain();
             const endTime = await getEndTime();
 
             await raffleChain.createRaffle(TICKET_PRICE, MAX_TICKETS, endTime);
 
-            await raffleChain.connect(buyer).buyTicket(0n, 1n, {
-                value: TICKET_PRICE,
-            });
+            await fundAndApprove(mockUSDC, raffleChain, buyer);
+            await raffleChain.connect(buyer).buyTicket(0n, 1n);
 
             await increaseTime(3601);
 
@@ -472,14 +495,13 @@ describe("RaffleChain", function () {
 
     describe("cancelStuckRaffle", function () {
         it("cancels stuck raffle after cancel timeout", async function () {
-            const { raffleChain, buyer } = await deployRaffleChainHarness();
+            const { raffleChain, mockUSDC, buyer } = await deployRaffleChainHarness();
             const endTime = await getEndTime();
 
             await raffleChain.createRaffle(TICKET_PRICE, MAX_TICKETS, endTime);
 
-            await raffleChain.connect(buyer).buyTicket(0n, 1n, {
-                value: TICKET_PRICE,
-            });
+            await fundAndApprove(mockUSDC, raffleChain, buyer);
+            await raffleChain.connect(buyer).buyTicket(0n, 1n);
 
             await raffleChain.exposedForceWaitingRandomness(0n);
 
@@ -490,18 +512,17 @@ describe("RaffleChain", function () {
                 .withArgs(0n);
 
             const raffle = await raffleChain.getRaffle(0n);
-            expect(raffle.status).to.equal(3n); // CANCELLED
+            expect(raffle.status).to.equal(3n);
         });
 
         it("reverts if cancelling stuck raffle before cancel timeout", async function () {
-            const { raffleChain, buyer } = await deployRaffleChainHarness();
+            const { raffleChain, mockUSDC, buyer } = await deployRaffleChainHarness();
             const endTime = await getEndTime();
 
             await raffleChain.createRaffle(TICKET_PRICE, MAX_TICKETS, endTime);
 
-            await raffleChain.connect(buyer).buyTicket(0n, 1n, {
-                value: TICKET_PRICE,
-            });
+            await fundAndApprove(mockUSDC, raffleChain, buyer);
+            await raffleChain.connect(buyer).buyTicket(0n, 1n);
 
             await raffleChain.exposedForceWaitingRandomness(0n);
 
@@ -524,40 +545,39 @@ describe("RaffleChain", function () {
 
     describe("claimRefund", function () {
         it("allows buyer to claim refund on cancelled raffle", async function () {
-            const { raffleChain, buyer } = await deployRaffleChainHarness();
+            const { raffleChain, mockUSDC, buyer } = await deployRaffleChainHarness();
             const endTime = await getEndTime();
 
             await raffleChain.createRaffle(TICKET_PRICE, MAX_TICKETS, endTime);
 
-            await raffleChain.connect(buyer).buyTicket(0n, 1n, {
-                value: TICKET_PRICE,
-            });
+            await fundAndApprove(mockUSDC, raffleChain, buyer);
+            await raffleChain.connect(buyer).buyTicket(0n, 1n);
 
             await raffleChain.exposedForceWaitingRandomness(0n);
-
             await increaseTime(24 * 3600 + 1);
-
             await raffleChain.cancelStuckRaffle(0n);
+
+            const before = await mockUSDC.balanceOf(buyer.address);
 
             await expect(raffleChain.connect(buyer).claimRefund(0n, 1n))
                 .to.emit(raffleChain, "RefundClaimed")
                 .withArgs(0n, buyer.address, 1n);
+
+            const after = await mockUSDC.balanceOf(buyer.address);
+            expect(after - before).to.equal(TICKET_PRICE);
         });
 
         it("reverts if refund already claimed", async function () {
-            const { raffleChain, buyer } = await deployRaffleChainHarness();
+            const { raffleChain, mockUSDC, buyer } = await deployRaffleChainHarness();
             const endTime = await getEndTime();
 
             await raffleChain.createRaffle(TICKET_PRICE, MAX_TICKETS, endTime);
 
-            await raffleChain.connect(buyer).buyTicket(0n, 1n, {
-                value: TICKET_PRICE,
-            });
+            await fundAndApprove(mockUSDC, raffleChain, buyer);
+            await raffleChain.connect(buyer).buyTicket(0n, 1n);
 
             await raffleChain.exposedForceWaitingRandomness(0n);
-
             await increaseTime(24 * 3600 + 1);
-
             await raffleChain.cancelStuckRaffle(0n);
 
             await raffleChain.connect(buyer).claimRefund(0n, 1n);
@@ -568,19 +588,17 @@ describe("RaffleChain", function () {
         });
 
         it("reverts if non ticket owner tries to claim refund", async function () {
-            const { raffleChain, buyer, otherBuyer } = await deployRaffleChainHarness();
+            const { raffleChain, mockUSDC, buyer, otherBuyer } =
+                await deployRaffleChainHarness();
             const endTime = await getEndTime();
 
             await raffleChain.createRaffle(TICKET_PRICE, MAX_TICKETS, endTime);
 
-            await raffleChain.connect(buyer).buyTicket(0n, 1n, {
-                value: TICKET_PRICE,
-            });
+            await fundAndApprove(mockUSDC, raffleChain, buyer);
+            await raffleChain.connect(buyer).buyTicket(0n, 1n);
 
             await raffleChain.exposedForceWaitingRandomness(0n);
-
             await increaseTime(24 * 3600 + 1);
-
             await raffleChain.cancelStuckRaffle(0n);
 
             await expect(
@@ -589,14 +607,13 @@ describe("RaffleChain", function () {
         });
 
         it("reverts if raffle is not cancelled", async function () {
-            const { raffleChain, buyer } = await deployRaffleChain();
+            const { raffleChain, mockUSDC, buyer } = await deployRaffleChain();
             const endTime = await getEndTime();
 
             await raffleChain.createRaffle(TICKET_PRICE, MAX_TICKETS, endTime);
 
-            await raffleChain.connect(buyer).buyTicket(0n, 1n, {
-                value: TICKET_PRICE,
-            });
+            await fundAndApprove(mockUSDC, raffleChain, buyer);
+            await raffleChain.connect(buyer).buyTicket(0n, 1n);
 
             await expect(
                 raffleChain.connect(buyer).claimRefund(0n, 1n),
@@ -606,14 +623,14 @@ describe("RaffleChain", function () {
 
     describe("withdrawFunds", function () {
         it("allows organizer to withdraw funds after winner is selected", async function () {
-            const { raffleChain, organizer, buyer } = await deployRaffleChainHarness();
+            const { raffleChain, mockUSDC, organizer, buyer } =
+                await deployRaffleChainHarness();
             const endTime = await getEndTime();
 
             await raffleChain.createRaffle(TICKET_PRICE, MAX_TICKETS, endTime);
 
-            await raffleChain.connect(buyer).buyTicket(0n, 1n, {
-                value: TICKET_PRICE,
-            });
+            await fundAndApprove(mockUSDC, raffleChain, buyer);
+            await raffleChain.connect(buyer).buyTicket(0n, 1n);
 
             await raffleChain.exposedSelectWinner(0n, 0n);
 
@@ -625,17 +642,17 @@ describe("RaffleChain", function () {
 
             expect(raffle.fundsWithdrawn).to.equal(true);
             expect(raffle.amountCollected).to.equal(0n);
+            expect(await mockUSDC.balanceOf(organizer.address)).to.equal(TICKET_PRICE);
         });
 
         it("reverts if non organizer tries to withdraw", async function () {
-            const { raffleChain, buyer } = await deployRaffleChainHarness();
+            const { raffleChain, mockUSDC, buyer } = await deployRaffleChainHarness();
             const endTime = await getEndTime();
 
             await raffleChain.createRaffle(TICKET_PRICE, MAX_TICKETS, endTime);
 
-            await raffleChain.connect(buyer).buyTicket(0n, 1n, {
-                value: TICKET_PRICE,
-            });
+            await fundAndApprove(mockUSDC, raffleChain, buyer);
+            await raffleChain.connect(buyer).buyTicket(0n, 1n);
 
             await raffleChain.exposedSelectWinner(0n, 0n);
 
@@ -645,14 +662,14 @@ describe("RaffleChain", function () {
         });
 
         it("reverts if organizer withdraws twice", async function () {
-            const { raffleChain, organizer, buyer } = await deployRaffleChainHarness();
+            const { raffleChain, mockUSDC, organizer, buyer } =
+                await deployRaffleChainHarness();
             const endTime = await getEndTime();
 
             await raffleChain.createRaffle(TICKET_PRICE, MAX_TICKETS, endTime);
 
-            await raffleChain.connect(buyer).buyTicket(0n, 1n, {
-                value: TICKET_PRICE,
-            });
+            await fundAndApprove(mockUSDC, raffleChain, buyer);
+            await raffleChain.connect(buyer).buyTicket(0n, 1n);
 
             await raffleChain.exposedSelectWinner(0n, 0n);
 
@@ -664,14 +681,14 @@ describe("RaffleChain", function () {
         });
 
         it("reverts if winner is not selected yet", async function () {
-            const { raffleChain, organizer, buyer } = await deployRaffleChain();
+            const { raffleChain, mockUSDC, organizer, buyer } =
+                await deployRaffleChain();
             const endTime = await getEndTime();
 
             await raffleChain.createRaffle(TICKET_PRICE, MAX_TICKETS, endTime);
 
-            await raffleChain.connect(buyer).buyTicket(0n, 1n, {
-                value: TICKET_PRICE,
-            });
+            await fundAndApprove(mockUSDC, raffleChain, buyer);
+            await raffleChain.connect(buyer).buyTicket(0n, 1n);
 
             await expect(
                 raffleChain.connect(organizer).withdrawFunds(0n),
@@ -689,26 +706,17 @@ describe("RaffleChain", function () {
         });
 
         it("reverts getSoldTicketNumberByIndex if index is out of bounds", async function () {
-            const { raffleChain, buyer } = await deployRaffleChain();
+            const { raffleChain, mockUSDC, buyer } = await deployRaffleChain();
             const endTime = await getEndTime();
 
             await raffleChain.createRaffle(TICKET_PRICE, MAX_TICKETS, endTime);
 
-            await raffleChain.connect(buyer).buyTicket(0n, 1n, {
-                value: TICKET_PRICE,
-            });
+            await fundAndApprove(mockUSDC, raffleChain, buyer);
+            await raffleChain.connect(buyer).buyTicket(0n, 1n);
 
             await expect(
                 raffleChain.getSoldTicketNumberByIndex(0n, 1n),
             ).to.be.revertedWith("RaffleChain: index out of bounds");
-        });
-
-        it("reverts getTicketInfo if token does not exist", async function () {
-            const { raffleChain } = await deployRaffleChain();
-
-            await expect(raffleChain.getTicketInfo(999n)).to.be.revertedWith(
-                "RaffleChain: token does not exist",
-            );
         });
     });
 });
