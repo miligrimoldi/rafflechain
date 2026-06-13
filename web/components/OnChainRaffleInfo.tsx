@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import { getReadContract, OnChainRaffle, STATUS_LABELS } from "@/lib/contract";
+import { formatUsdc } from "@/lib/usdc";
 
 type Props = { raffleIdOnChain: number };
 
@@ -51,8 +52,8 @@ export default function OnChainRaffleInfo({ raffleIdOnChain }: Props) {
   const statusLabel = STATUS_LABELS[raffle.status] ?? "Desconocido";
   const ticketsSold = Number(raffle.ticketsSold);
   const maxTickets = Number(raffle.maxTickets);
-  const ticketPrice = ethers.formatEther(raffle.ticketPrice);
-  const amountCollected = ethers.formatEther(raffle.amountCollected);
+    const ticketPrice = formatUsdc(raffle.ticketPrice);
+    const amountCollected = formatUsdc(raffle.amountCollected);
   const isZeroWinner = raffle.winner === ethers.ZeroAddress;
 
   return (
@@ -61,9 +62,9 @@ export default function OnChainRaffleInfo({ raffleIdOnChain }: Props) {
       <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
         <Row label="Estado" value={statusLabel} />
         <Row label="Terminó" value={ended ? "Sí" : "No"} />
-        <Row label="Precio del ticket" value={`${ticketPrice} ETH`} />
+          <Row label="Precio del ticket" value={`${ticketPrice} USDC`} />
         <Row label="Tickets vendidos" value={`${ticketsSold} / ${maxTickets}`} />
-        <Row label="Recaudado" value={`${amountCollected} ETH`} />
+          <Row label="Recaudado" value={`${amountCollected} USDC`} />
         <Row
           label="Cierre"
           value={endDate.toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" })}

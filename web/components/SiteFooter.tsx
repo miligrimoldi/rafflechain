@@ -7,7 +7,7 @@ export default function SiteFooter() {
           <span className="footer-dot">·</span>
           Sorteos verificables en Sepolia
         </p>
-        <p className="footer-tag">Chainlink VRF · MetaMask · ETH</p>
+        <p className="footer-tag">Chainlink VRF · MetaMask · USDC</p>
       </div>
     </footer>
   );

@@ -22,7 +22,7 @@ export default async function HomePage() {
             <span className="hero-title-accent">Tu suerte. Verificable.</span>
           </h1>
           <p className="hero-sub">
-            Rifas con tickets en ETH, sorteos con Chainlink y reglas que nadie puede
+              Rifas con tickets en USDC, sorteos con Chainlink y reglas que nadie puede
             cambiar a escondidas. Elegí, comprá y seguí todo desde la wallet.
           </p>
           <div className="hero-actions">
@@ -39,7 +39,7 @@ export default async function HomePage() {
               <p className="hero-stat-label">Rifas publicadas</p>
             </div>
             <div className="hero-stat">
-              <p className="hero-stat-value">ETH</p>
+                <p className="hero-stat-value">USDC</p>
               <p className="hero-stat-label">Tickets on-chain</p>
             </div>
             <div className="hero-stat">

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useWallet } from "@/context/WalletContext";
 import { getReadContract, getWriteContract, OnChainRaffle } from "@/lib/contract";
 import { ethers } from "ethers";
+import { formatUsdc } from "@/lib/usdc";
 
 type Props = { raffleIdOnChain: number };
 
@@ -77,7 +78,7 @@ export default function ClaimRefundForm({ raffleIdOnChain }: Props) {
       </h2>
       <p className="text-sm text-muted mb-4 leading-relaxed">
         Si compraste un ticket, podés reclamar tu{" "}
-        <span className="font-bold">{ethers.formatEther(raffle.ticketPrice)} ETH</span> de vuelta.
+          <span className="font-bold">{formatUsdc(raffle.ticketPrice)} USDC</span> de vuelta.
       </p>
 
       {!isConnected ? (

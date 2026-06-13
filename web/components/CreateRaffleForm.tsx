@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ethers } from "ethers";
+import { parseUsdc } from "@/lib/usdc";
 import { useWallet } from "@/context/WalletContext";
 import { getWriteContract } from "@/lib/contract";
 import FormField from "./FormField";
@@ -61,13 +62,18 @@ export default function CreateRaffleForm() {
       return;
     }
 
-    const ticketPriceWei = (() => {
-      try { return ethers.parseEther(form.ticketPrice); } catch { return null; }
-    })();
-    if (ticketPriceWei === null || ticketPriceWei <= 0n) {
-      setError("Precio de ticket inválido. Ingresá un valor en ETH, ej. 0.01");
-      return;
-    }
+      const ticketPriceUnits = (() => {
+          try {
+              return parseUsdc(form.ticketPrice);
+          } catch {
+              return null;
+          }
+      })();
+
+      if (ticketPriceUnits === null || ticketPriceUnits <= 0n) {
+          setError("Precio de ticket inválido. Ingresá un valor en USDC, ej. 1");
+          return;
+      }
 
     const maxTickets = parseInt(form.maxTickets, 10);
     if (isNaN(maxTickets) || maxTickets < 1) {
@@ -87,7 +93,7 @@ export default function CreateRaffleForm() {
       setStatus("Confirmá la transacción en MetaMask…");
       const contract = getWriteContract(signer);
       const tx = await contract.createRaffle(
-        ticketPriceWei,
+          ticketPriceUnits,
         BigInt(maxTickets),
         BigInt(endTimestamp)
       );
@@ -153,10 +159,10 @@ export default function CreateRaffleForm() {
       <div className="border-b border-[var(--border)] pb-7 space-y-5">
         <p className="form-section-title">Datos on-chain</p>
         <FormField
-          label="Precio del ticket (ETH)"
+            label="Precio del ticket (USDC)"
           name="ticketPrice"
           required
-          placeholder="ej. 0.01"
+            placeholder="ej. 1"
           value={form.ticketPrice}
           onChange={handleChange}
         />

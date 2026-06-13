@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
 import "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-contract RaffleChain is ERC721, ReentrancyGuard, VRFConsumerBaseV2Plus {
+contract RaffleChain is ReentrancyGuard, VRFConsumerBaseV2Plus {
+
     enum RaffleStatus {
         ACTIVE,
         WAITING_RANDOMNESS,
@@ -31,8 +33,10 @@ contract RaffleChain is ERC721, ReentrancyGuard, VRFConsumerBaseV2Plus {
         uint256 vrfRequestTimestamp;
     }
 
+    using SafeERC20 for IERC20;
+    IERC20 public immutable paymentToken;
+
     uint256 private _nextRaffleId;
-    uint256 private _nextTokenId;
 
     uint256 private immutable i_subscriptionId;
     bytes32 private immutable i_keyHash;
@@ -50,9 +54,6 @@ contract RaffleChain is ERC721, ReentrancyGuard, VRFConsumerBaseV2Plus {
     mapping(uint256 => mapping(uint256 => uint256)) private _soldTicketNumbers;
     mapping(uint256 => mapping(uint256 => bool)) private _ticketRefunded;
 
-    mapping(uint256 => uint256) private _tokenRaffleId;
-    mapping(uint256 => uint256) private _tokenTicketNumber;
-
     event RaffleCreated(
         uint256 indexed raffleId,
         address indexed organizer,
@@ -64,8 +65,7 @@ contract RaffleChain is ERC721, ReentrancyGuard, VRFConsumerBaseV2Plus {
     event TicketPurchased(
         uint256 indexed raffleId,
         address indexed buyer,
-        uint256 indexed ticketNumber,
-        uint256 tokenId
+        uint256 indexed ticketNumber
     );
 
     event RandomnessRequested(
@@ -110,14 +110,17 @@ contract RaffleChain is ERC721, ReentrancyGuard, VRFConsumerBaseV2Plus {
         uint256 subscriptionId,
         address vrfCoordinator,
         bytes32 keyHash,
-        uint32 callbackGasLimit
+        uint32 callbackGasLimit,
+        address paymentTokenAddress
     )
-        ERC721("RaffleChain Ticket", "RCT")
         VRFConsumerBaseV2Plus(vrfCoordinator)
     {
+        require(paymentTokenAddress != address(0), "RaffleChain: invalid payment token");
+
         i_subscriptionId = subscriptionId;
         i_keyHash = keyHash;
         i_callbackGasLimit = callbackGasLimit;
+        paymentToken = IERC20(paymentTokenAddress);
     }
 
     modifier raffleExists(uint256 raffleId) {
@@ -164,7 +167,7 @@ contract RaffleChain is ERC721, ReentrancyGuard, VRFConsumerBaseV2Plus {
     function buyTicket(
         uint256 raffleId,
         uint256 ticketNumber
-    ) external payable nonReentrant raffleExists(raffleId) {
+    ) external nonReentrant raffleExists(raffleId) {
         Raffle storage raffle = _raffles[raffleId];
 
         require(raffle.status == RaffleStatus.ACTIVE, "RaffleChain: raffle is not active");
@@ -172,22 +175,21 @@ contract RaffleChain is ERC721, ReentrancyGuard, VRFConsumerBaseV2Plus {
         require(raffle.ticketsSold < raffle.maxTickets, "RaffleChain: sold out");
         require(ticketNumber >= 1 && ticketNumber <= raffle.maxTickets, "RaffleChain: invalid ticket number");
         require(_ticketOwner[raffleId][ticketNumber] == address(0), "RaffleChain: ticket already sold");
-        require(msg.value == raffle.ticketPrice, "RaffleChain: incorrect ETH amount");
 
-        uint256 tokenId = _nextTokenId++;
+        paymentToken.safeTransferFrom(
+            msg.sender,
+            address(this),
+            raffle.ticketPrice
+        );
 
         _ticketOwner[raffleId][ticketNumber] = msg.sender;
         _soldTicketNumbers[raffleId][raffle.ticketsSold] = ticketNumber;
 
         raffle.ticketsSold += 1;
-        raffle.amountCollected += msg.value;
+        raffle.amountCollected += raffle.ticketPrice;
 
-        _tokenRaffleId[tokenId] = raffleId;
-        _tokenTicketNumber[tokenId] = ticketNumber;
 
-        _safeMint(msg.sender, tokenId);
-
-        emit TicketPurchased(raffleId, msg.sender, ticketNumber, tokenId);
+        emit TicketPurchased(raffleId, msg.sender, ticketNumber);
     }
 
     function requestWinner(
@@ -271,8 +273,7 @@ contract RaffleChain is ERC721, ReentrancyGuard, VRFConsumerBaseV2Plus {
 
         _ticketRefunded[raffleId][ticketNumber] = true;
 
-        (bool success, ) = msg.sender.call{value: raffle.ticketPrice}("");
-        require(success, "RaffleChain: refund transfer failed");
+        paymentToken.safeTransfer(msg.sender, raffle.ticketPrice);
 
         emit RefundClaimed(raffleId, msg.sender, ticketNumber);
     }
@@ -292,8 +293,7 @@ contract RaffleChain is ERC721, ReentrancyGuard, VRFConsumerBaseV2Plus {
         raffle.fundsWithdrawn = true;
         raffle.amountCollected = 0;
 
-        (bool success, ) = raffle.organizer.call{value: amount}("");
-        require(success, "RaffleChain: transfer failed");
+        paymentToken.safeTransfer(raffle.organizer, amount);
 
         emit FundsWithdrawn(raffleId, raffle.organizer, amount);
     }
@@ -337,14 +337,6 @@ contract RaffleChain is ERC721, ReentrancyGuard, VRFConsumerBaseV2Plus {
     ) external view raffleExists(raffleId) returns (uint256) {
         require(index < _raffles[raffleId].ticketsSold, "RaffleChain: index out of bounds");
         return _soldTicketNumbers[raffleId][index];
-    }
-
-    function getTicketInfo(
-        uint256 tokenId
-    ) external view returns (uint256 raffleId, uint256 ticketNumber) {
-        require(_ownerOf(tokenId) != address(0), "RaffleChain: token does not exist");
-
-        return (_tokenRaffleId[tokenId], _tokenTicketNumber[tokenId]);
     }
 
     function isRaffleEnded(

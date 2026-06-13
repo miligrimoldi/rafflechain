@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ethers } from "ethers";
 import { useWallet } from "@/context/WalletContext";
 import { getReadContract, STATUS_LABELS, OnChainRaffle } from "@/lib/contract";
+import { formatUsdc } from "@/lib/usdc";
 
 type MetadataRecord = {
   raffleIdOnChain: number;
@@ -138,7 +138,7 @@ export default function MyRafflesList() {
               <div className="flex flex-col items-end gap-2 shrink-0">
                 <span className={statusBadgeClass(status, ended)}>{statusLabel}</span>
                 <span className="text-xs font-mono text-dim">
-                  {ethers.formatEther(item.onChain.ticketPrice)} ETH
+                  {formatUsdc(item.onChain.ticketPrice)} USDC
                 </span>
               </div>
             </Link>

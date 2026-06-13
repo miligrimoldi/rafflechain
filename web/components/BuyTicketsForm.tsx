@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import { useWallet } from "@/context/WalletContext";
 import { getReadContract, getWriteContract, OnChainRaffle } from "@/lib/contract";
+import { getUsdcContract, formatUsdc } from "@/lib/usdc";
 
 type Props = { raffleIdOnChain: number };
 
@@ -63,10 +64,19 @@ export default function BuyTicketsForm({ raffleIdOnChain }: Props) {
         setLoading(false);
         return;
       }
-      const tx = await contract.buyTicket(raffleIdOnChain, num, {
-        value: raffle.ticketPrice,
-      });
-      const receipt = await tx.wait();
+        const buyerAddress = await signer.getAddress();
+        const usdc = getUsdcContract(signer);
+        const raffleChainAddress = process.env.NEXT_PUBLIC_RAFFLE_CHAIN_ADDRESS!;
+
+        const allowance: bigint = await usdc.allowance(buyerAddress, raffleChainAddress);
+
+        if (allowance < raffle.ticketPrice) {
+            const approveTx = await usdc.approve(raffleChainAddress, raffle.ticketPrice);
+            await approveTx.wait();
+        }
+
+        const tx = await contract.buyTicket(raffleIdOnChain, num);
+        const receipt = await tx.wait();
       setTxHash(receipt.hash);
       setTicketNumber("");
     } catch (e: unknown) {
@@ -113,7 +123,7 @@ export default function BuyTicketsForm({ raffleIdOnChain }: Props) {
           <p className="text-sm text-slate-500">
             Precio:{" "}
             <span className="font-bold text-accent">
-              {ethers.formatEther(raffle.ticketPrice)} ETH
+             {formatUsdc(raffle.ticketPrice)} USDC
             </span>
           </p>
 

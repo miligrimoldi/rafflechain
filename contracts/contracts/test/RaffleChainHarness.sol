@@ -1,6 +1,3 @@
-// contracts/test/RaffleChainHarness.sol
-
-// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
 import "../RaffleChain.sol";
@@ -10,9 +7,16 @@ contract RaffleChainHarness is RaffleChain {
         uint256 subscriptionId,
         address vrfCoordinator,
         bytes32 keyHash,
-        uint32 callbackGasLimit
+        uint32 callbackGasLimit,
+        address paymentTokenAddress
     )
-        RaffleChain(subscriptionId, vrfCoordinator, keyHash, callbackGasLimit)
+        RaffleChain(
+            subscriptionId,
+            vrfCoordinator,
+            keyHash,
+            callbackGasLimit,
+            paymentTokenAddress
+        )
     {}
 
     function exposedSelectWinner(
