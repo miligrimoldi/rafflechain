@@ -153,9 +153,6 @@ export default function CreateRaffleForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      {error && <div className="alert-error">{error}</div>}
-      {status && !error && <div className="alert-info">{status}</div>}
-
       <div className="border-b border-[var(--border)] pb-7 space-y-5">
         <p className="form-section-title">Datos on-chain</p>
         <FormField
@@ -237,6 +234,9 @@ export default function CreateRaffleForm() {
           onChange={handleChange}
         />
       </div>
+
+      {error && <div className="alert-error">{error}</div>}
+      {status && !error && <div className="alert-info">{status}</div>}
 
       <button
         type="submit"
