@@ -30,11 +30,18 @@ const WalletContext = createContext<WalletContextValue>({
   disconnect: () => {},
 });
 
-export function WalletProvider({ children }: { children: React.ReactNode }) {
-  const [address, setAddress] = useState<string | null>(null);
-  const [signer, setSigner] = useState<ethers.JsonRpcSigner | null>(null);
-  const [chainId, setChainId] = useState<number | null>(null);
+type WalletState = {
+  address: string | null;
+  signer: ethers.JsonRpcSigner | null;
+  chainId: number | null;
+};
 
+const DISCONNECTED: WalletState = { address: null, signer: null, chainId: null };
+
+export function WalletProvider({ children }: { children: React.ReactNode }) {
+  const [wallet, setWallet] = useState<WalletState>(DISCONNECTED);
+
+  const { address, signer, chainId } = wallet;
   const isConnected = address !== null;
   const isWrongNetwork = isConnected && chainId !== SEPOLIA_CHAIN_ID;
 
@@ -43,15 +50,15 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     const provider = new ethers.BrowserProvider(window.ethereum);
     const accounts = await provider.listAccounts();
     if (accounts.length === 0) {
-      setAddress(null);
-      setSigner(null);
-      setChainId(null);
+      setWallet(DISCONNECTED);
       return;
     }
     const network = await provider.getNetwork();
-    setChainId(Number(network.chainId));
-    setAddress(await accounts[0].getAddress());
-    setSigner(accounts[0]);
+    setWallet({
+      chainId: Number(network.chainId),
+      address: await accounts[0].getAddress(),
+      signer: accounts[0],
+    });
   }, []);
 
   useEffect(() => {
@@ -60,9 +67,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
     const handleAccountsChanged = (accounts: unknown) => {
       if ((accounts as string[]).length === 0) {
-        setAddress(null);
-        setSigner(null);
-        setChainId(null);
+        setWallet(DISCONNECTED);
       } else {
         updateSigner();
       }
@@ -89,9 +94,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   }, [updateSigner]);
 
   const disconnect = useCallback(() => {
-    setAddress(null);
-    setSigner(null);
-    setChainId(null);
+    setWallet(DISCONNECTED);
   }, []);
 
   return (
