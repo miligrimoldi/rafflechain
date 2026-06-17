@@ -6,6 +6,7 @@ import OnChainRaffleInfo from "@/components/OnChainRaffleInfo";
 import TicketGrid from "@/components/TicketGrid";
 import OrganizerActions from "@/components/OrganizerActions";
 import ClaimRefundForm from "@/components/ClaimRefundForm";
+import RaffleCountdownSection from "@/components/RaffleCountdownSection";
 
 export const dynamic = "force-dynamic";
 
@@ -43,12 +44,15 @@ export default async function RaffleDetailPage({ params }: Props) {
               #{raffle.raffleIdOnChain} on-chain
             </span>
 
-            <h1 className="detail-hero-title mb-3">{raffle.title}</h1>
-            <p className="detail-meta mb-10">
-              Organizado por <strong>{raffle.organizerName}</strong>
-            </p>
+              <h1 className="detail-hero-title mb-3">{raffle.title}</h1>
 
-            <Section title="Descripción" content={raffle.description} />
+              <p className="detail-meta mb-6">
+                  Organizado por <strong>{raffle.organizerName}</strong>
+              </p>
+
+              <RaffleCountdownSection raffleIdOnChain={raffle.raffleIdOnChain} />
+
+              <Section title="Descripción" content={raffle.description} />
             {raffle.conditions && (
               <Section title="Condiciones" content={raffle.conditions} />
             )}
