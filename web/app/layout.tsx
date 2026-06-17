@@ -7,6 +7,8 @@ import NavLinks from "@/components/NavLinks";
 import PageBackdrop from "@/components/PageBackdrop";
 import SiteFooter from "@/components/SiteFooter";
 import Link from "next/link";
+import { Toaster } from "react-hot-toast";
+import WinnerEventListener from "@/components/WinnerEventListener";
 
 const syne = Syne({
   variable: "--font-syne",
@@ -40,29 +42,49 @@ export default function RootLayout({
       lang="es"
       className={`${syne.variable} ${dmSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full">
-        <PageBackdrop />
-        <div className="app-shell">
-          <Providers>
+    <body className="min-h-full">
+    <PageBackdrop />
+
+    <div className="app-shell">
+        <Providers>
+
+            <Toaster
+                position="top-center"
+                toastOptions={{
+                    style: {
+                        background: "#141422",
+                        color: "#f4f4ff",
+                        border: "1px solid rgba(34, 211, 238, 0.25)",
+                    },
+                }}
+            />
+
+            <WinnerEventListener />
+
             <header className="sticky top-0 z-50 header-glass">
-              <div className="max-w-6xl mx-auto px-4 sm:px-6 h-[4.25rem] flex items-center justify-between gap-4">
-                <div className="flex items-center gap-5 sm:gap-8 min-w-0">
-                  <Link href="/" className="logo-wrap shrink-0">
-                    <span className="logo-icon" aria-hidden>
-                      🎟
-                    </span>
-                    <span className="logo-text">RaffleChain</span>
-                  </Link>
-                  <NavLinks />
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 h-[4.25rem] flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-5 sm:gap-8 min-w-0">
+                        <Link href="/" className="logo-wrap shrink-0">
+              <span className="logo-icon" aria-hidden>
+                🎟
+              </span>
+                            <span className="logo-text">RaffleChain</span>
+                        </Link>
+
+                        <NavLinks />
+                    </div>
+
+                    <WalletButton />
                 </div>
-                <WalletButton />
-              </div>
             </header>
+
             {children}
+
             <SiteFooter />
-          </Providers>
-        </div>
-      </body>
+
+        </Providers>
+    </div>
+    </body>
     </html>
   );
 }

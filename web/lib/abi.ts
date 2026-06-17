@@ -13,6 +13,7 @@ export const RAFFLECHAIN_ABI = [
     "function getTicketsSold(uint256 raffleId) external view returns (uint256)",
     "function getTicketOwner(uint256 raffleId, uint256 ticketNumber) external view returns (address)",
     "function isRaffleEnded(uint256 raffleId) external view returns (bool)",
+    "function getSoldTicketNumberByIndex(uint256 raffleId, uint256 index) external view returns (uint256)",
 
     "event RaffleCreated(uint256 indexed raffleId, address indexed organizer, uint256 ticketPrice, uint256 maxTickets, uint256 endTime)",
     "event TicketPurchased(uint256 indexed raffleId, address indexed buyer, uint256 indexed ticketNumber)",

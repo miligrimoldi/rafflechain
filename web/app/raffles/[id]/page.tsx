@@ -7,6 +7,7 @@ import TicketGrid from "@/components/TicketGrid";
 import OrganizerActions from "@/components/OrganizerActions";
 import ClaimRefundForm from "@/components/ClaimRefundForm";
 import RaffleCountdownSection from "@/components/RaffleCountdownSection";
+import WinnerStatusChecker from "@/components/WinnerStatusChecker";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +52,9 @@ export default async function RaffleDetailPage({ params }: Props) {
               </p>
 
               <RaffleCountdownSection raffleIdOnChain={raffle.raffleIdOnChain} />
+
+              <WinnerStatusChecker raffleIdOnChain={raffle.raffleIdOnChain} />
+
 
               <Section title="Descripción" content={raffle.description} />
             {raffle.conditions && (

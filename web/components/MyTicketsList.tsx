@@ -74,23 +74,32 @@ export default function MyTicketsList() {
 
                 for (const m of metadata) {
                     const onChain = (await contract.getRaffle(m.raffleIdOnChain)) as OnChainRaffle;
-                    const maxTickets = Number(onChain.maxTickets);
+                    const ticketsSold = Number(onChain.ticketsSold);
 
-                    for (let ticketNumber = 1; ticketNumber <= maxTickets; ticketNumber++) {
-                        const owner: string = await contract.getTicketOwner(
-                            m.raffleIdOnChain,
-                            ticketNumber
-                        );
+                    const soldTicketNumbers = await Promise.all(
+                        Array.from({ length: ticketsSold }, (_, index) =>
+                            contract.getSoldTicketNumberByIndex(m.raffleIdOnChain, index)
+                        )
+                    );
 
-                        if (owner !== ethers.ZeroAddress && owner.toLowerCase() === normalizedAddress) {
+                    const owners = await Promise.all(
+                        soldTicketNumbers.map((ticketNumber) =>
+                            contract.getTicketOwner(m.raffleIdOnChain, ticketNumber)
+                        )
+                    );
+
+                    soldTicketNumbers.forEach((ticketNumber, index) => {
+                        const owner = owners[index] as string;
+
+                        if (owner.toLowerCase() === normalizedAddress) {
                             found.push({
                                 raffleIdOnChain: m.raffleIdOnChain,
                                 title: m.title,
-                                ticketNumber,
+                                ticketNumber: Number(ticketNumber),
                                 onChain,
                             });
                         }
-                    }
+                    });
                 }
 
                 if (!cancelled) setItems(found);
