@@ -50,9 +50,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
     const network = await provider.getNetwork();
     setChainId(Number(network.chainId));
-    const s = await provider.getSigner();
-    setAddress(await s.getAddress());
-    setSigner(s);
+    setAddress(await accounts[0].getAddress());
+    setSigner(accounts[0]);
   }, []);
 
   useEffect(() => {
