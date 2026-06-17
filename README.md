@@ -51,6 +51,7 @@ El proyecto combina dos capas:
 | Capa | Tecnologías |
 |---|---|
 | Smart contracts | Solidity, Hardhat 3, OpenZeppelin, Chainlink VRF |
+| Pagos | USDC (ERC-20) vía Circle en Sepolia |
 | Frontend | Next.js 16, TypeScript, Tailwind CSS v4 |
 | Interacción blockchain | Ethers.js v6, MetaMask |
 | Backend / API | Next.js API Routes, Prisma ORM v7 |
@@ -86,7 +87,8 @@ rafflechain/
 - Node.js 20+
 - Docker (para la base de datos local)
 - MetaMask instalado en el navegador
-- ETH de prueba en Sepolia (conseguilo en un faucet)
+- ETH de prueba en Sepolia para pagar gas (conseguilo en un faucet)
+- USDC de testnet en Sepolia para comprar tickets (conseguilo en el faucet de Circle)
 
 ---
 
@@ -212,9 +214,9 @@ En producción se usa [Neon](https://neon.tech) como proveedor de PostgreSQL ser
 1. El organizador conecta MetaMask y crea una rifa (precio de ticket, máximo de tickets, fecha de cierre)
 2. El contrato asigna un ID y emite el evento `RaffleCreated`
 3. El organizador registra la metadata visible (título, descripción, imagen) en la base de datos
-4. Los participantes compran tickets; cada ticket es un NFT ERC-721
+4. Los participantes aprueban el gasto de USDC y compran tickets; cada ticket es un NFT ERC-721
 5. Al cerrar la rifa (por tiempo o tickets agotados), el organizador solicita el sorteo
 6. Chainlink VRF entrega un número aleatorio verificable al contrato
 7. El contrato selecciona al ganador y emite el evento `WinnerSelected`
-8. El ganador reclama su premio y el organizador retira los fondos
+8. El ganador reclama su premio y el organizador retira los fondos en USDC
 
