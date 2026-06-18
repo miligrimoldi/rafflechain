@@ -1,6 +1,6 @@
 # RaffleChain
 
-**RaffleChain** es una aplicación descentralizada (dApp) para crear y participar en rifas transparentes sobre la blockchain de Ethereum. Los sorteos se ejecutan mediante Chainlink VRF, lo que garantiza que el resultado sea verificablemente aleatorio y que ningún participante — ni siquiera el organizador — pueda manipularlo.
+**RaffleChain** es una aplicación descentralizada (dApp) para crear y participar en rifas transparentes sobre la blockchain de Ethereum. Los sorteos se ejecutan mediante Chainlink VRF, lo que garantiza que el resultado sea verificablemente aleatorio y que ningún participante —ni siquiera el organizador— pueda manipularlo.
 
 Desarrollado por **Milagros Grimoldi** y **Pilar Silveyra**.
 
@@ -14,23 +14,36 @@ Las rifas tradicionales requieren confiar en el organizador para que el sorteo s
 
 ---
 
+## Características
+
+* Rifas transparentes y verificables en blockchain.
+* Pagos en USDC (ERC-20).
+* Sorteos mediante Chainlink VRF.
+* Integración con MetaMask.
+* Separación entre lógica on-chain y metadata off-chain.
+* Frontend responsive desarrollado con Next.js.
+* Contrato desplegado en Sepolia para pruebas públicas.
+
+---
+
 ## Arquitectura general
 
 El proyecto combina dos capas:
 
-```
+```text
 ┌─────────────────────────────────────────────────────┐
-│                    ON-CHAIN (Sepolia)                │
+│                    ON-CHAIN (Sepolia)               │
 │                                                     │
 │  Contrato RaffleChain.sol                           │
 │  • Crea y gestiona rifas                            │
-│  • Vende tickets como NFTs (ERC-721)                │
+│  • Procesa pagos en USDC (ERC-20)                   │
+│  • Registra la propiedad de los tickets             │
 │  • Solicita aleatoriedad a Chainlink VRF            │
-│  • Distribuye fondos al ganador y al organizador    │
+│  • Gestiona premios, retiros y reembolsos           │
 └─────────────────┬───────────────────────────────────┘
                   │ Lee / escribe vía Ethers.js
 ┌─────────────────▼───────────────────────────────────┐
-│                   OFF-CHAIN (Vercel)                 │
+│                   OFF-CHAIN (Vercel)                │
 │                                                     │
 │  Next.js (frontend + API Routes)                    │
 │  • Muestra las rifas con su metadata                │
@@ -38,44 +51,45 @@ El proyecto combina dos capas:
 │                                                     │
 │  PostgreSQL (Neon) vía Prisma                       │
 │  • Almacena metadata visible: título, descripción,  │
-│    imagen, organizador (no afecta la lógica)        │
+│    imagen, organizador y condiciones                │
 └─────────────────────────────────────────────────────┘
 ```
 
-**Separación de responsabilidades:** toda la lógica de negocio (quién ganó, cuánto se pagó, si la rifa es válida) vive en el contrato. La base de datos solo guarda información de presentación.
+**Separación de responsabilidades:** toda la lógica de negocio (quién ganó, cuánto se pagó, quién puede retirar fondos, quién puede reclamar un reembolso, etc.) vive en el contrato inteligente. La base de datos únicamente almacena información de presentación y experiencia de usuario.
 
 ---
 
 ## Tecnologías
 
-| Capa | Tecnologías |
-|---|---|
-| Smart contracts | Solidity, Hardhat 3, OpenZeppelin, Chainlink VRF |
-| Pagos | USDC (ERC-20) vía Circle en Sepolia |
-| Frontend | Next.js 16, TypeScript, Tailwind CSS v4 |
-| Interacción blockchain | Ethers.js v6, MetaMask |
-| Backend / API | Next.js API Routes, Prisma ORM v7 |
-| Base de datos | PostgreSQL 16 (Neon en producción) |
-| Red | Sepolia testnet |
-| Deploy | Vercel (web) + Hardhat Ignition (contrato) |
+| Capa                   | Tecnologías                                      |
+| ---------------------- | ------------------------------------------------ |
+| Smart contracts        | Solidity, Hardhat 3, OpenZeppelin, Chainlink VRF |
+| Pagos                  | USDC (ERC-20) en Sepolia                         |
+| Frontend               | Next.js 16, TypeScript, Tailwind CSS v4          |
+| Interacción blockchain | Ethers.js v6, MetaMask                           |
+| Backend / API          | Next.js API Routes, Prisma ORM                   |
+| Base de datos          | PostgreSQL 16 (Neon en producción)               |
+| Red                    | Ethereum Sepolia                                 |
+| Deploy                 | Vercel (web) + Hardhat Ignition (contrato)       |
 
 ---
 
 ## Estructura del repositorio
 
-```
+```text
 rafflechain/
-├── contracts/          # Smart contracts
+├── contracts/
 │   ├── contracts/
 │   │   └── RaffleChain.sol
 │   ├── test/
 │   ├── ignition/modules/
 │   └── hardhat.config.ts
-└── web/                # Aplicación Next.js
-    ├── app/            # Páginas y API Routes
-    ├── components/     # Componentes React
-    ├── context/        # WalletContext
-    ├── lib/            # Cliente Prisma, helpers de contrato
+│
+└── web/
+    ├── app/
+    ├── components/
+    ├── context/
+    ├── lib/
     └── prisma/
         └── schema.prisma
 ```
@@ -84,77 +98,36 @@ rafflechain/
 
 ## Requisitos previos
 
-- Node.js 20+
-- Docker (para la base de datos local)
-- MetaMask instalado en el navegador
-- ETH de prueba en Sepolia para pagar gas (conseguilo en un faucet)
-- USDC de testnet en Sepolia para comprar tickets (conseguilo en el faucet de Circle)
+* Node.js 20+
+* Docker
+* MetaMask instalado en el navegador
+* ETH de prueba en Sepolia para pagar gas
+* USDC de prueba en Sepolia para comprar tickets
 
 ---
 
-## Contratos (`/contracts`)
+# Contratos (`/contracts`)
 
-### Instalar dependencias
+## Instalar dependencias
 
 ```bash
 cd contracts
 npm install
 ```
 
-### Compilar
+## Compilar
 
 ```bash
 npm run compile
 ```
 
-### Correr los tests
+## Ejecutar tests
 
 ```bash
 npm test
 ```
 
-### Deployar en Sepolia
-
-Creá un archivo `.env` en `/contracts`:
-
-```env
-SEPOLIA_RPC_URL="https://eth-sepolia.g.alchemy.com/v2/TU_API_KEY"
-PRIVATE_KEY="tu_clave_privada_sin_0x"
-```
-
-Luego:
-
-```bash
-npx hardhat ignition deploy ignition/modules/RaffleChain.ts --network sepolia
-```
-
-El contrato ya está deployado en Sepolia en:
-```
-0xd5B23CEa399E6EdC32C69EE4A1cC9619985b4f80
-```
-
----
-
-## Web (`/web`)
-
-### 1. Levantar la base de datos local
-
-Desde la raíz del repositorio:
-
-```bash
-docker compose up -d
-```
-
-Esto levanta PostgreSQL 16 en el puerto `5433`.
-
-### 2. Instalar dependencias
-
-```bash
-cd web
-npm install
-```
-
-### 3. Configurar variables de entorno
+## Configurar variables de entorno
 
 Copiá el archivo de ejemplo:
 
@@ -162,61 +135,139 @@ Copiá el archivo de ejemplo:
 cp .env.example .env
 ```
 
-Editá `.env` con los valores correspondientes:
+Completar:
 
 ```env
-# Cadena de conexión a PostgreSQL
-DATABASE_URL="postgresql://rafflechain:rafflechain@localhost:5433/rafflechain?schema=public"
-
-# Red: 11155111 = Sepolia, 31337 = Hardhat local
-NEXT_PUBLIC_CHAIN_ID=11155111
-
-# URL del nodo RPC (Alchemy, Infura, o nodo local)
-NEXT_PUBLIC_RPC_URL="https://eth-sepolia.g.alchemy.com/v2/TU_API_KEY"
-
-# Dirección del contrato desplegado
-NEXT_PUBLIC_RAFFLE_CHAIN_ADDRESS="0xd5B23CEa399E6EdC32C69EE4A1cC9619985b4f80"
+SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/TU_API_KEY
+SEPOLIA_PRIVATE_KEY=TU_PRIVATE_KEY
 ```
 
-### 4. Aplicar migraciones de Prisma
+## Deployar en Sepolia
+
+```bash
+npx hardhat ignition deploy ignition/modules/RaffleChain.ts --network sepolia
+```
+
+Contrato desplegado:
+
+```text
+0x4c4A83Aff8bf5F558dF3B6D666b733003fdFF93a
+```
+
+---
+
+# Web (`/web`)
+
+## 1. Levantar PostgreSQL
+
+Desde la raíz:
+
+```bash
+docker compose up -d
+```
+
+Esto levanta PostgreSQL local en el puerto `5433`.
+
+## 2. Instalar dependencias
+
+```bash
+cd web
+npm install
+```
+
+## 3. Configurar variables de entorno
+
+Copiá el archivo de ejemplo:
+
+```bash
+cp .env.example .env
+```
+
+Completar:
+
+```env
+DATABASE_URL=postgresql://rafflechain:rafflechain@localhost:5433/rafflechain?schema=public
+
+NEXT_PUBLIC_CHAIN_ID=11155111
+
+NEXT_PUBLIC_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/TU_API_KEY
+
+NEXT_PUBLIC_RAFFLE_CHAIN_ADDRESS=0x4c4A83Aff8bf5F558dF3B6D666b733003fdFF93a
+
+NEXT_PUBLIC_USDC_ADDRESS=0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238
+```
+
+## 4. Aplicar migraciones
 
 ```bash
 npx prisma migrate dev
 ```
 
-### 5. Correr el servidor de desarrollo
+## 5. Ejecutar la aplicación
 
 ```bash
 npm run dev
 ```
 
-La app queda disponible en [http://localhost:3000](http://localhost:3000).
+La aplicación quedará disponible en:
+
+```text
+http://localhost:3000
+```
 
 ---
 
 ## Deploy en producción
 
-### Vercel (web)
+### Frontend (Vercel)
 
-1. Conectar el repositorio en [vercel.com](https://vercel.com)
-2. Establecer el **Root Directory** en `web`
-3. Configurar las variables de entorno en el panel de Vercel (las mismas que `.env` pero con los valores de producción)
-4. Vercel redeploya automáticamente con cada `git push` a `main`
+1. Conectar el repositorio a Vercel.
+2. Configurar el directorio raíz como `web`.
+3. Configurar las variables de entorno.
+4. Cada push a `main` genera un nuevo despliegue automáticamente.
 
 ### Base de datos (Neon)
 
-En producción se usa [Neon](https://neon.tech) como proveedor de PostgreSQL serverless. La `DATABASE_URL` de producción la provee Neon desde su panel.
+En producción se utiliza Neon como proveedor de PostgreSQL serverless. La conexión se configura mediante la variable `DATABASE_URL`.
 
 ---
 
 ## Flujo de una rifa
 
-1. El organizador conecta MetaMask y crea una rifa (precio de ticket, máximo de tickets, fecha de cierre)
-2. El contrato asigna un ID y emite el evento `RaffleCreated`
-3. El organizador registra la metadata visible (título, descripción, imagen) en la base de datos
-4. Los participantes aprueban el gasto de USDC y compran tickets; cada ticket es un NFT ERC-721
-5. Al cerrar la rifa (por tiempo o tickets agotados), el organizador solicita el sorteo
-6. Chainlink VRF entrega un número aleatorio verificable al contrato
-7. El contrato selecciona al ganador y emite el evento `WinnerSelected`
-8. El ganador reclama su premio y el organizador retira los fondos en USDC
+1. El organizador conecta MetaMask.
+2. Crea una rifa indicando:
 
+    * Precio del ticket en USDC.
+    * Cantidad máxima de tickets.
+    * Fecha de cierre.
+3. El contrato crea la rifa y emite el evento `RaffleCreated`.
+4. El organizador registra la metadata visible (título, descripción, imagen, condiciones, etc.).
+5. Los participantes aprueban el gasto de USDC mediante `approve`.
+6. Los participantes compran tickets utilizando USDC.
+7. El contrato registra la propiedad de cada ticket y transfiere los USDC al contrato.
+8. Al finalizar la rifa (por tiempo o tickets agotados), el organizador solicita el sorteo.
+9. Chainlink VRF genera un número aleatorio verificable.
+10. El contrato selecciona al ganador y emite el evento `WinnerSelected`.
+11. El ganador reclama el premio.
+12. El organizador retira los fondos recaudados.
+13. Si corresponde, los participantes pueden reclamar reembolsos.
+
+---
+
+## Seguridad y transparencia
+
+* La lógica crítica vive completamente on-chain.
+* Los pagos se realizan en USDC (ERC-20).
+* Los sorteos utilizan Chainlink VRF.
+* La metadata off-chain no afecta el resultado de la rifa.
+* Todas las transacciones son auditables en Etherscan.
+* Las acciones sensibles requieren la firma de la wallet correspondiente.
+
+---
+
+## Autores
+
+**Milagros Grimoldi**
+**Pilar Silveyra**
+
+Universidad Austral — Blockchain

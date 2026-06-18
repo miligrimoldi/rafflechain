@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ethers } from "ethers";
 import { useWallet } from "@/context/WalletContext";
 import { getReadContract, OnChainRaffle } from "@/lib/contract";
 import { formatUsdc } from "@/lib/usdc";

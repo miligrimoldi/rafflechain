@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import { getReadContract, OnChainRaffle, STATUS_LABELS } from "@/lib/contract";
 import { formatUsdc } from "@/lib/usdc";
-import RaffleCountdown from "./RaffleCountdown";
 
 type Props = { raffleIdOnChain: number };
 
